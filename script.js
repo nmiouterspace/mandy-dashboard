@@ -1,0 +1,5277 @@
+﻿const storageKey = "mandyEnglishStudentSystem";
+
+const prePaymentHistoryBackupKey = "mandyEnglishStudentSystemBackupBeforePaymentHistory20260701";
+const preClassRenameBackupKey = "mandyEnglishStudentSystemBackupBeforeClassRename20260722";
+
+const starterData = {
+  students: [
+    {
+      name: "Anna Nguyen",
+      className: "Kids Starters",
+      contact: "0901 234 567",
+      paymentType: "Monthly",
+      lessonsDone: 6,
+      lastPaymentDate: "2026-06-01",
+      nextDueDate: "2026-07-01",
+      status: "Active"
+    },
+    {
+      name: "Ben Tran",
+      className: "Teen Speaking",
+      contact: "0912 555 888",
+      paymentType: "Course",
+      lessonsDone: 22,
+      lastPaymentDate: "2026-05-15",
+      nextDueDate: "2026-07-15",
+      status: "Temporary pause"
+    },
+    {
+      name: "Linh Pham",
+      className: "IELTS Foundation",
+      contact: "linh@example.com",
+      paymentType: "Monthly",
+      lessonsDone: 8,
+      lastPaymentDate: "2026-04-20",
+      nextDueDate: "2026-05-20",
+      status: "Stopped"
+    }
+  ],
+  classes: [
+    {
+      name: "Kids Starters",
+      students: "Anna Nguyen, Minh Do",
+      schedule: "Mon, 18:00-19:00 | Wed, 18:00-19:00"
+    },
+    {
+      name: "Teen Speaking",
+      students: "Ben Tran, Nhi Le",
+      schedule: "Tue, 19:00-20:00 | Thu, 19:00-20:00"
+    },
+    {
+      name: "IELTS Foundation",
+      students: "Linh Pham",
+      schedule: "Sat, 09:00-10:00 | Sun, 09:00-10:00"
+    }
+  ]
+};
+
+backupLocalStorageDataOnce();
+let data = loadData();
+normalizeData();
+const recoveredTransferredAttendanceOnLoad = recoverTransferredStudentAttendance();
+syncClassStudents();
+applyUserRecordUpdates();
+const recoveredTransferredAttendanceAfterUpdates = recoverTransferredStudentAttendance();
+syncClassStudents();
+if (recoveredTransferredAttendanceOnLoad || recoveredTransferredAttendanceAfterUpdates) saveData(false);
+let editingStudentIndex = null;
+let editingScheduleIndex = null;
+let legacyTeachersRecovered = false;
+const editingAttendanceRows = new Set();
+const attendanceCycleViews = new Map();
+
+const studentRows = document.querySelector("#studentRows");
+const classRows = document.querySelector("#classRows");
+const stoppedClassRows = document.querySelector("#stoppedClassRows");
+const weeklySchedule = document.querySelector("#weeklySchedule");
+const attendanceBoard = document.querySelector("#attendanceBoard");
+const classOptions = document.querySelector("#classOptions");
+const filterClass = document.querySelector("#filterClass");
+const classListFilter = document.querySelector("#classListFilter");
+const attendanceClassFilter = document.querySelector("#attendanceClassFilter");
+const filterStatus = document.querySelector("#filterStatus");
+const filterDueDate = document.querySelector("#filterDueDate");
+const filterDueMonth = document.querySelector("#filterDueMonth");
+const filterDueYear = document.querySelector("#filterDueYear");
+const activeCount = document.querySelector("#activeCount");
+const activeClassCount = document.querySelector("#activeClassCount");
+const pauseCount = document.querySelector("#pauseCount");
+const stoppedCount = document.querySelector("#stoppedCount");
+const financeViewMode = document.querySelector("#financeViewMode");
+const financeDate = document.querySelector("#financeDate");
+const financeStartField = document.querySelector("#financeStartField");
+const financeEndField = document.querySelector("#financeEndField");
+const financeStartDate = document.querySelector("#financeStartDate");
+const financeEndDate = document.querySelector("#financeEndDate");
+const financeToday = document.querySelector("#financeToday");
+const financeRevenueLabel = document.querySelector("#financeRevenueLabel");
+const financeCostLabel = document.querySelector("#financeCostLabel");
+const financeProjectedLabel = document.querySelector("#financeProjectedLabel");
+const financeDailyRevenue = document.querySelector("#financeDailyRevenue");
+const financeDailyCost = document.querySelector("#financeDailyCost");
+const financeNetProfit = document.querySelector("#financeNetProfit");
+const financeCompletedLessons = document.querySelector("#financeCompletedLessons");
+const financeProjectedRevenue = document.querySelector("#financeProjectedRevenue");
+const financeDetailTitle = document.querySelector("#financeDetailTitle");
+const financeProjectedTitle = document.querySelector("#financeProjectedTitle");
+const financeClassFeeRows = document.querySelector("#financeClassFeeRows");
+const financeRevenueRows = document.querySelector("#financeRevenueRows");
+const financeProjectedRows = document.querySelector("#financeProjectedRows");
+const assistantMessages = document.querySelector("#assistantMessages");
+const assistantForm = document.querySelector("#assistantForm");
+const assistantInput = document.querySelector("#assistantInput");
+const toast = document.querySelector("#toast");
+const exportBackup = document.querySelector("#exportBackup");
+const importBackup = document.querySelector("#importBackup");
+const importBackupFile = document.querySelector("#importBackupFile");
+const studentModal = document.querySelector("#studentModal");
+const studentForm = document.querySelector("#studentForm");
+const newStudentClassSelect = document.querySelector("#newStudentClassSelect");
+const newStudentClassNew = document.querySelector("#newStudentClassNew");
+const newClassField = document.querySelector("#newClassField");
+const newStudentPayment = document.querySelector("#newStudentPayment");
+const newStudentDiscount = document.querySelector("#newStudentDiscount");
+const newStudentTotalLessons = document.querySelector("#newStudentTotalLessons");
+const newStudentPaidLessons = document.querySelector("#newStudentPaidLessons");
+const discountField = document.querySelector("#discountField");
+const deleteStudentModal = document.querySelector("#deleteStudentModal");
+const paymentModal = document.querySelector("#paymentModal");
+const paymentForm = document.querySelector("#paymentForm");
+const paymentStudentSummary = document.querySelector("#paymentStudentSummary");
+const paymentDate = document.querySelector("#paymentDate");
+const paymentPackage = document.querySelector("#paymentPackage");
+const paymentLessons = document.querySelector("#paymentLessons");
+const paymentNote = document.querySelector("#paymentNote");
+const paymentHistoryList = document.querySelector("#paymentHistoryList");
+const scheduleModal = document.querySelector("#scheduleModal");
+const scheduleForm = document.querySelector("#scheduleForm");
+const scheduleRows = document.querySelector("#scheduleRows");
+const attendanceDateModal = document.querySelector("#attendanceDateModal");
+const attendanceDateInput = document.querySelector("#attendanceDateInput");
+const lessonLogBoard = document.querySelector("#lessonLogBoard");
+const lessonLogClassFilter = document.querySelector("#lessonLogClassFilter");
+const lessonLogTeacherFilter = document.querySelector("#lessonLogTeacherFilter");
+const lessonLogDateFilter = document.querySelector("#lessonLogDateFilter");
+const lessonLogModal = document.querySelector("#lessonLogModal");
+const lessonLogForm = document.querySelector("#lessonLogForm");
+const lessonLogModalTitle = document.querySelector("#lessonLogModalTitle");
+const lessonLogSessionSummary = document.querySelector("#lessonLogSessionSummary");
+const lessonLogTaught = document.querySelector("#lessonLogTaught");
+const lessonLogHomework = document.querySelector("#lessonLogHomework");
+const lessonLogNote = document.querySelector("#lessonLogNote");
+const lessonLogStudentNotes = document.querySelector("#lessonLogStudentNotes");
+const progressStudentSelect = document.querySelector("#progressStudentSelect");
+const progressRangeFilter = document.querySelector("#progressRangeFilter");
+const progressPerformanceFilter = document.querySelector("#progressPerformanceFilter");
+const studentProgressBoard = document.querySelector("#studentProgressBoard");
+const copyParentDraft = document.querySelector("#copyParentDraft");
+const tuitionStudentSelect = document.querySelector("#tuitionStudentSelect");
+const tuitionFeeType = document.querySelector("#tuitionFeeType");
+const tuitionStudentName = document.querySelector("#tuitionStudentName");
+const tuitionPackageLessons = document.querySelector("#tuitionPackageLessons");
+const tuitionTotalFee = document.querySelector("#tuitionTotalFee");
+const tuitionComment = document.querySelector("#tuitionComment");
+const printTuitionSlip = document.querySelector("#printTuitionSlip");
+const slipStudentName = document.querySelector("#slipStudentName");
+const slipFeeType = document.querySelector("#slipFeeType");
+const slipLessonCount = document.querySelector("#slipLessonCount");
+const slipTotalFee = document.querySelector("#slipTotalFee");
+const slipComment = document.querySelector("#slipComment");
+const slipQrPreview = document.querySelector("#slipQrPreview");
+const scheduleWeekSelect = document.querySelector("#scheduleWeekSelect");
+const previousWeek = document.querySelector("#previousWeek");
+const nextWeek = document.querySelector("#nextWeek");
+const currentWeek = document.querySelector("#currentWeek");
+let selectedWeekStart = getWeekStart(new Date());
+let editingAttendanceCell = null;
+let pendingLessonLogSession = null;
+let editingPaymentStudentIndex = null;
+
+document.querySelectorAll(".tab-button").forEach(button => {
+  button.addEventListener("click", () => showTab(button.dataset.tab));
+});
+
+document.querySelector("#addStudent").addEventListener("click", () => openStudentModal());
+document.querySelector("#clearFilters").addEventListener("click", clearStudentFilters);
+document.querySelector("#printSchedule").addEventListener("click", () => {
+  showTab("scheduleTab");
+  window.print();
+});
+document.querySelector("#exportScheduleCsv").addEventListener("click", exportScheduleCsv);
+scheduleWeekSelect.addEventListener("change", event => {
+  selectedWeekStart = parseDateValue(event.target.value);
+  renderWeeklySchedule();
+  renderAttendanceBoard();
+});
+previousWeek.addEventListener("click", () => shiftSelectedWeek(-1));
+nextWeek.addEventListener("click", () => shiftSelectedWeek(1));
+currentWeek.addEventListener("click", () => {
+  selectedWeekStart = getWeekStart(new Date());
+  renderWeekOptions();
+  renderWeeklySchedule();
+  renderAttendanceBoard();
+});
+financeDate.value = formatDateValue(new Date());
+financeStartDate.value = formatDateValue(getWeekStart(new Date()));
+financeEndDate.value = formatDateValue(new Date());
+financeViewMode.addEventListener("change", () => {
+  updateFinanceRangeFields();
+  renderFinance();
+});
+[financeDate, financeStartDate, financeEndDate].forEach(input => {
+  input.addEventListener("change", renderFinance);
+});
+financeToday.addEventListener("click", () => {
+  applyFinanceQuickRange("today");
+});
+document.querySelectorAll("[data-finance-range]").forEach(button => {
+  button.addEventListener("click", () => applyFinanceQuickRange(button.dataset.financeRange));
+});
+document.querySelector("#closeStudentModal").addEventListener("click", closeStudentModal);
+document.querySelector("#cancelStudentModal").addEventListener("click", closeStudentModal);
+deleteStudentModal.addEventListener("click", deleteEditingStudent);
+studentModal.addEventListener("click", event => {
+  if (event.target === studentModal) closeStudentModal();
+});
+document.querySelector("#closePaymentModal").addEventListener("click", closePaymentModal);
+document.querySelector("#cancelPaymentModal").addEventListener("click", closePaymentModal);
+paymentModal.addEventListener("click", event => {
+  if (event.target === paymentModal) closePaymentModal();
+});
+paymentPackage.addEventListener("change", updatePaymentLessonDefault);
+document.querySelector("#closeScheduleModal").addEventListener("click", closeScheduleModal);
+document.querySelector("#cancelScheduleModal").addEventListener("click", closeScheduleModal);
+document.querySelector("#addScheduleSlot").addEventListener("click", () => addSchedulePickerRow());
+document.querySelector("#stopClassSchedule").addEventListener("click", stopEditingClass);
+scheduleModal.addEventListener("click", event => {
+  if (event.target === scheduleModal) closeScheduleModal();
+});
+document.querySelector("#closeAttendanceDateModal").addEventListener("click", closeAttendanceDateModal);
+document.querySelector("#cancelAttendanceDate").addEventListener("click", closeAttendanceDateModal);
+document.querySelector("#applyAttendanceDate").addEventListener("click", applyAttendanceDateFromModal);
+document.querySelector("#clearAttendanceDate").addEventListener("click", clearAttendanceDateFromModal);
+attendanceDateModal.addEventListener("click", event => {
+  if (event.target === attendanceDateModal) closeAttendanceDateModal();
+});
+document.querySelector("#closeLessonLogModal").addEventListener("click", closeLessonLogModal);
+document.querySelector("#cancelLessonLogModal").addEventListener("click", closeLessonLogModal);
+lessonLogModal.addEventListener("click", event => {
+  if (event.target === lessonLogModal) closeLessonLogModal();
+});
+
+studentForm.addEventListener("submit", event => {
+  event.preventDefault();
+  addStudentFromForm();
+});
+
+scheduleForm.addEventListener("submit", event => {
+  event.preventDefault();
+  saveScheduleFromPicker();
+});
+
+newStudentClassSelect.addEventListener("change", updateNewClassField);
+newStudentPayment.addEventListener("change", () => {
+  updateDiscountField();
+  updateLessonDefaults(false);
+});
+[filterClass, filterStatus, filterDueDate, filterDueMonth, filterDueYear].forEach(filter => {
+  filter.addEventListener("input", renderStudents);
+  filter.addEventListener("change", renderStudents);
+});
+classListFilter.addEventListener("change", renderClasses);
+attendanceClassFilter.addEventListener("change", renderAttendanceBoard);
+[lessonLogClassFilter, lessonLogTeacherFilter, lessonLogDateFilter].forEach(filter => {
+  filter.addEventListener("input", renderLessonLogs);
+  filter.addEventListener("change", renderLessonLogs);
+});
+document.querySelector("#clearLessonLogFilters").addEventListener("click", clearLessonLogFilters);
+[progressStudentSelect, progressRangeFilter, progressPerformanceFilter].forEach(filter => {
+  filter.addEventListener("change", renderStudentProgress);
+});
+copyParentDraft.addEventListener("click", copyCurrentParentDraft);
+tuitionStudentSelect.addEventListener("change", () => renderTuitionSlip(true));
+tuitionFeeType.addEventListener("change", () => {
+  const student = data.students[Number(tuitionStudentSelect.value)];
+  tuitionPackageLessons.value = getTuitionPackageLessons(student);
+  renderTuitionSlip(false);
+});
+[tuitionStudentName, tuitionPackageLessons, tuitionTotalFee, tuitionComment].forEach(input => {
+  input.addEventListener("input", () => renderTuitionSlip(false));
+});
+printTuitionSlip.addEventListener("click", printTuitionSlipPreview);
+assistantForm.addEventListener("submit", event => {
+  event.preventDefault();
+  handleAssistantMessage();
+});
+
+lessonLogForm.addEventListener("submit", event => {
+  event.preventDefault();
+  saveLessonLogAndCompleteSession();
+});
+
+paymentForm.addEventListener("submit", event => {
+  event.preventDefault();
+  saveStudentPayment();
+});
+
+document.querySelector("#saveData").addEventListener("click", () => saveData(true));
+exportBackup.addEventListener("click", exportDataBackup);
+importBackup.addEventListener("click", () => importBackupFile.click());
+importBackupFile.addEventListener("change", importDataBackup);
+
+document.querySelector("#resetData").addEventListener("click", () => {
+  const confirmed = window.confirm("Reset all data to the original sample data?");
+  if (!confirmed) return;
+  data = structuredClone(starterData);
+  normalizeData();
+  syncClassStudents();
+  saveData(true);
+  render();
+});
+
+function loadData() {
+  const saved = localStorage.getItem(storageKey);
+  if (!saved) return structuredClone(starterData);
+
+  try {
+    return JSON.parse(saved);
+  } catch {
+    return structuredClone(starterData);
+  }
+}
+
+function backupLocalStorageDataOnce() {
+  try {
+    const saved = localStorage.getItem(storageKey);
+    if (!saved || localStorage.getItem(prePaymentHistoryBackupKey)) return;
+    localStorage.setItem(prePaymentHistoryBackupKey, saved);
+  } catch {
+    // Backup is best-effort; the app should still open if localStorage is restricted.
+  }
+}
+
+function backupBeforeClassRenameOnce() {
+  try {
+    const saved = localStorage.getItem(storageKey);
+    if (!saved || localStorage.getItem(preClassRenameBackupKey)) return;
+    localStorage.setItem(preClassRenameBackupKey, saved);
+  } catch {
+    // Backup is best-effort; renaming should still work if localStorage is restricted.
+  }
+}
+
+function normalizeData() {
+  data.students = (data.students || []).map(student => {
+    const paymentType = normalizePaymentType(student.paymentType);
+
+    return {
+      name: repairVietnameseText(student.name || ""),
+      className: repairVietnameseText(student.className || ""),
+      contact: repairVietnameseText(student.contact || ""),
+      paymentType,
+      discountPercent: normalizeDiscountPercent(student.discountPercent),
+      lessonsDone: Number.isFinite(Number(student.lessonsDone)) ? Number(student.lessonsDone) : 0,
+      totalLessons: normalizeTotalLessons(student.totalLessons, paymentType),
+      paidLessons: normalizePaidLessons(student.paidLessons, student.totalLessons, paymentType),
+      lastPaymentDate: student.lastPaymentDate || "",
+      nextDueDate: student.nextDueDate || "",
+      status: student.status || "Active",
+      paymentHistory: normalizePaymentHistory(student.paymentHistory)
+    };
+  });
+
+  data.classes = (data.classes || []).map(classItem => ({
+    name: repairVietnameseText(classItem.name || ""),
+    students: repairVietnameseText(classItem.students || ""),
+    schedule: normalizeSchedule(repairVietnameseText(classItem.schedule || "")),
+    status: classItem.status === "Stopped" ? "Stopped" : "Active",
+    statusHistory: normalizeClassStatusHistory(classItem.statusHistory)
+  }));
+
+  data.teachers = data.teachers && typeof data.teachers === "object" ? data.teachers : {};
+  data.attendance = data.attendance && typeof data.attendance === "object" ? data.attendance : {};
+  data.attendanceNotes = data.attendanceNotes && typeof data.attendanceNotes === "object" ? normalizeAttendanceNotes(data.attendanceNotes) : {};
+  data.completedSessions = data.completedSessions && typeof data.completedSessions === "object" ? data.completedSessions : {};
+  data.lessonLogs = Array.isArray(data.lessonLogs) ? data.lessonLogs.map(normalizeLessonLog).filter(Boolean) : [];
+  data.migrations = data.migrations && typeof data.migrations === "object" ? data.migrations : {};
+  data.scheduleHistory = data.scheduleHistory && typeof data.scheduleHistory === "object" ? data.scheduleHistory : {};
+  data.tuitionSlip = data.tuitionSlip && typeof data.tuitionSlip === "object" ? data.tuitionSlip : {};
+  data.tuitionSlip.qrImage = typeof data.tuitionSlip.qrImage === "string" ? data.tuitionSlip.qrImage : "";
+  data.finance = data.finance && typeof data.finance === "object" ? data.finance : {};
+  data.finance.classFees = data.finance.classFees && typeof data.finance.classFees === "object" ? normalizeMoneyMap(data.finance.classFees) : {};
+  data.finance.sessionCosts = data.finance.sessionCosts && typeof data.finance.sessionCosts === "object" ? normalizeMoneyMap(data.finance.sessionCosts) : {};
+  data.finance.sessionStudents = data.finance.sessionStudents && typeof data.finance.sessionStudents === "object" ? normalizeFinanceSessionStudents(data.finance.sessionStudents) : {};
+}
+
+function normalizeMoneyMap(source) {
+  return Object.entries(source || {}).reduce((normalized, [key, value]) => {
+    const amount = parseMoneyValue(value);
+    if (amount > 0) normalized[key] = amount;
+    return normalized;
+  }, {});
+}
+
+function normalizeFinanceSessionStudents(source) {
+  return Object.entries(source || {}).reduce((normalized, [sessionKey, students]) => {
+    if (!Array.isArray(students)) return normalized;
+
+    const cleanStudents = students
+      .map(student => ({
+        name: repairVietnameseText(student.name || ""),
+        paymentType: normalizePaymentType(student.paymentType || "Monthly")
+      }))
+      .filter(student => student.name);
+
+    if (cleanStudents.length) normalized[sessionKey] = cleanStudents;
+    return normalized;
+  }, {});
+}
+
+function normalizeAttendanceNotes(notes) {
+  return Object.entries(notes || {}).reduce((normalizedNotes, [key, value]) => {
+    const text = repairVietnameseText(String(value || "").trim());
+    if (text) normalizedNotes[key] = text;
+    return normalizedNotes;
+  }, {});
+}
+
+function recoverTransferredStudentAttendance() {
+  const studentNameCounts = data.students.reduce((counts, student) => {
+    const key = normalizeSearchText(student.name);
+    if (key) counts.set(key, (counts.get(key) || 0) + 1);
+    return counts;
+  }, new Map());
+  let recovered = false;
+
+  data.students.forEach(student => {
+    const normalizedName = normalizeSearchText(student.name);
+    if (!normalizedName || studentNameCounts.get(normalizedName) !== 1) return;
+
+    const oldClassNames = getAttendanceClassesForStudentName(student.name)
+      .filter(className => normalizeSearchText(className) !== normalizeSearchText(student.className));
+
+    oldClassNames.forEach(oldClassName => {
+      migrateStudentLinkedRecords(
+        { name: student.name, className: oldClassName },
+        student
+      );
+      recovered = true;
+    });
+  });
+
+  return recovered;
+}
+
+function getAttendanceClassesForStudentName(studentName) {
+  const normalizedStudentName = normalizeSearchText(studentName);
+  const classNames = new Set();
+
+  Object.keys(data.attendance || {}).forEach(key => {
+    const parts = key.split("|");
+    if (parts.length < 6) return;
+    if (normalizeSearchText(parts[4]) !== normalizedStudentName) return;
+    if (parts[1]) classNames.add(parts[1]);
+  });
+
+  Object.keys(data.attendanceNotes || {}).forEach(key => {
+    const parts = key.split("|");
+    if (parts.length < 3) return;
+    if (normalizeSearchText(parts[1]) !== normalizedStudentName) return;
+    if (parts[0]) classNames.add(parts[0]);
+  });
+
+  return [...classNames];
+}
+
+function normalizeLessonLog(log) {
+  if (!log || typeof log !== "object") return null;
+  const sessionKey = String(log.sessionKey || "").trim();
+  const className = repairVietnameseText(log.className || "");
+  const date = log.date || "";
+
+  if (!sessionKey || !className || !date) return null;
+
+  return {
+    sessionKey,
+    date,
+    className,
+    day: log.day || "",
+    startTime: log.startTime || "",
+    endTime: log.endTime || "",
+    teacher: repairVietnameseText(log.teacher || ""),
+    taught: repairVietnameseText(log.taught || ""),
+    homework: repairVietnameseText(log.homework || ""),
+    note: repairVietnameseText(log.note || ""),
+    studentNotes: Array.isArray(log.studentNotes)
+      ? log.studentNotes.map(note => ({
+        studentName: repairVietnameseText(note.studentName || ""),
+        performance: note.performance || "Good",
+        note: repairVietnameseText(note.note || "")
+      })).filter(note => note.studentName)
+      : [],
+    createdAt: log.createdAt || date,
+    updatedAt: log.updatedAt || log.createdAt || date
+  };
+}
+
+function normalizePaymentHistory(history) {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .map((record, index) => {
+      if (!record || typeof record !== "object") return null;
+      const lessons = Math.max(1, Math.floor(Number(record.lessons) || 0));
+      return {
+        date: record.date || "",
+        package: record.package || "Monthly",
+        cycleIndex: Number.isFinite(Number(record.cycleIndex)) ? Number(record.cycleIndex) : index,
+        lessons,
+        note: repairVietnameseText(record.note || ""),
+        createdAt: record.createdAt || ""
+      };
+    })
+    .filter(record => record && record.date);
+}
+
+function normalizeClassStatusHistory(history) {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .filter(entry => entry && entry.effectiveFrom)
+    .map(entry => ({
+      effectiveFrom: entry.effectiveFrom,
+      status: entry.status === "Stopped" ? "Stopped" : "Active"
+    }))
+    .sort((first, second) => first.effectiveFrom.localeCompare(second.effectiveFrom));
+}
+
+function saveData(showMessage) {
+  localStorage.setItem(storageKey, JSON.stringify(data));
+  if (showMessage) showToast();
+}
+
+function exportDataBackup() {
+  const payload = {
+    app: "Mandy English Student Management",
+    version: "1.0",
+    exportedAt: new Date().toISOString(),
+    storageKey,
+    data
+  };
+  const fileName = `mandy-english-backup-${formatDateTimeForFileName(new Date())}.json`;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showToast("Backup exported");
+}
+
+function importDataBackup(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(String(reader.result || ""));
+      const importedData = imported?.data && typeof imported.data === "object" ? imported.data : imported;
+      if (!isValidBackupData(importedData)) {
+        window.alert("This backup file does not look like Mandy English data.");
+        return;
+      }
+
+      const confirmed = window.confirm(
+        "Import this backup?\n\nThis will replace all current students, classes, schedule, attendance, lesson logs, and finance data in this browser. Please make sure you selected the correct backup file."
+      );
+      if (!confirmed) return;
+
+      backupCurrentDataBeforeImport();
+      data = importedData;
+      normalizeData();
+      syncClassStudents();
+      saveData(false);
+      render();
+      showToast("Backup imported");
+    } catch {
+      window.alert("Cannot import this file. Please choose a valid Mandy English backup JSON file.");
+    } finally {
+      importBackupFile.value = "";
+    }
+  };
+  reader.readAsText(file);
+}
+
+function isValidBackupData(value) {
+  return value
+    && typeof value === "object"
+    && Array.isArray(value.students)
+    && Array.isArray(value.classes);
+}
+
+function backupCurrentDataBeforeImport() {
+  try {
+    localStorage.setItem(`mandyEnglishBackupBeforeImport-${formatDateTimeForFileName(new Date())}`, JSON.stringify(data));
+  } catch {
+    // Import should still work if this safety backup cannot be written.
+  }
+}
+
+function formatDateTimeForFileName(date) {
+  const pad = value => String(value).padStart(2, "0");
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate())
+  ].join("-") + `_${pad(date.getHours())}-${pad(date.getMinutes())}`;
+}
+
+function render() {
+  syncClassStudents();
+  recoverLegacyTeachersForCurrentWeek();
+  renderClassOptions();
+  renderFilterClassOptions();
+  renderClassListFilterOptions();
+  renderAttendanceClassFilterOptions();
+  renderLessonLogClassFilterOptions();
+  renderProgressStudentOptions();
+  renderTuitionStudentOptions();
+  renderStudentModalClassChoices();
+  renderStudents();
+  renderClasses();
+  renderWeekOptions();
+  renderWeeklySchedule();
+  renderAttendanceBoard();
+  renderLessonLogs();
+  renderStudentProgress();
+  renderTuitionSlip(true);
+  renderFinance();
+  updateDashboard();
+}
+
+function applyUserRecordUpdates() {
+  applyTuyetAttendanceUpdate();
+  applyThaiOneOnOneAttendanceUpdate();
+  applyThaiStageFiveReset();
+  applyGaoFlyersAttendanceUpdate();
+  applyKateOneOnOneAttendanceUpdate();
+  applyHHoangStageSixAttendanceUpdate();
+  applyMNhatStageFourAttendanceUpdate();
+}
+
+function applyTuyetAttendanceUpdate() {
+  const migrationKey = "tuyet-attendance-96-lessons-2026-06-28";
+  if (data.migrations[migrationKey]) return;
+
+  const studentIndex = data.students.findIndex(student => isTuyetStudent(student));
+  const student = studentIndex >= 0
+    ? data.students[studentIndex]
+    : {
+      name: "Tuyáº¿t",
+      className: "1on1 Tuyáº¿t",
+      contact: "",
+      paymentType: "Course",
+      discountPercent: 0,
+      lessonsDone: 0,
+      totalLessons: 12,
+      paidLessons: 96,
+      lastPaymentDate: "2026-03-25",
+      nextDueDate: "",
+      status: "Active"
+    };
+
+  student.name = repairVietnameseText(student.name || "Tuyáº¿t");
+  student.className = repairVietnameseText(student.className || "1on1 Tuyáº¿t");
+  student.paymentType = "Course";
+  student.lessonsDone = 45;
+  student.totalLessons = 12;
+  student.paidLessons = 96;
+  student.lastPaymentDate = "2026-03-25";
+  student.nextDueDate = "";
+  student.status = "Active";
+
+  if (studentIndex >= 0) {
+    data.students[studentIndex] = student;
+  } else {
+    data.students.push(student);
+  }
+
+  removeStudentAttendanceRecords(student.name, student.className);
+  getTuyetAttendanceCycles().forEach((cycleDates, cycleIndex) => {
+    cycleDates.forEach((dateValue, lessonIndex) => {
+      const attendanceSession = {
+        className: student.className,
+        startTime: "",
+        endTime: "",
+        date: parseDateValue(dateValue)
+      };
+
+      data.attendance[getAttendanceKey(attendanceSession, student, lessonIndex, cycleIndex)] = true;
+    });
+  });
+
+  data.migrations[migrationKey] = true;
+  saveData(false);
+}
+
+function isTuyetStudent(student) {
+  const normalizedName = normalizeSearchText(student.name);
+  const normalizedClass = normalizeSearchText(student.className);
+  return normalizedName.includes("tuyet")
+    || normalizedClass.includes("1on1 tuyet")
+    || normalizedClass.includes("1on1 tuy")
+    || (normalizedName.includes("tuy") && normalizedClass.includes("1on1"));
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/Ä‘/g, "d")
+    .replace(/Ä/g, "D")
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function removeStudentAttendanceRecords(studentName, className = "") {
+  const normalizedStudentName = normalizeSearchText(studentName);
+  const normalizedClassName = normalizeSearchText(className);
+
+  Object.keys(data.attendance).forEach(key => {
+    const parts = key.split("|");
+    const keyClassName = parts[1] || "";
+    const keyStudentName = parts[4] || "";
+    const sameStudent = normalizeSearchText(keyStudentName) === normalizedStudentName;
+    const sameClass = !normalizedClassName || normalizeSearchText(keyClassName) === normalizedClassName;
+
+    if (sameStudent && sameClass) {
+      delete data.attendance[key];
+    }
+  });
+}
+
+function getTuyetAttendanceCycles() {
+  return [
+    [
+      "2025-09-03",
+      "2025-09-04",
+      "2025-09-05",
+      "2025-09-10",
+      "2025-09-12",
+      "2025-09-17",
+      "2025-09-18",
+      "2025-09-19",
+      "2025-09-25",
+      "2025-10-01",
+      "2025-10-03",
+      "2025-10-08"
+    ],
+    [
+      "2025-10-10",
+      "2025-10-16",
+      "2025-10-22",
+      "2025-10-24",
+      "2025-10-29",
+      "2025-10-31",
+      "2025-11-05",
+      "2025-11-07",
+      "2025-11-12",
+      "2025-11-13",
+      "2025-11-15",
+      "2025-11-17"
+    ],
+    [
+      "2025-11-19",
+      "2025-11-21",
+      "2025-11-26",
+      "2025-12-03",
+      "2025-12-18",
+      "2026-01-09",
+      "2026-01-21",
+      "2026-01-30",
+      "2026-03-04",
+      "2026-03-06",
+      "2026-03-10",
+      "2026-03-18"
+    ],
+    [
+      "2026-03-25",
+      "2026-03-27",
+      "2026-04-15",
+      "2026-04-17",
+      "2026-04-24",
+      "2026-05-06",
+      "2026-05-13",
+      "2026-06-23",
+      "2026-06-27"
+    ]
+  ];
+}
+
+function applyThaiOneOnOneAttendanceUpdate() {
+  const migrationKey = "thai-1on1-attendance-12-lessons-2026-06-29";
+  if (data.migrations[migrationKey]) return;
+
+  const studentIndex = data.students.findIndex(student => isThaiOneOnOneStudent(student));
+  const student = studentIndex >= 0
+    ? data.students[studentIndex]
+    : {
+      name: "ThÃ¡i",
+      className: "1on1 ThÃ¡i",
+      contact: "",
+      paymentType: "Monthly",
+      discountPercent: 0,
+      lessonsDone: 0,
+      totalLessons: 12,
+      paidLessons: 12,
+      lastPaymentDate: "2026-04-22",
+      nextDueDate: "",
+      status: "Active"
+    };
+
+  student.name = repairVietnameseText(student.name || "ThÃ¡i");
+  student.className = repairVietnameseText(student.className || "1on1 ThÃ¡i");
+  student.totalLessons = 12;
+  student.paidLessons = Math.max(Number(student.paidLessons) || 0, 12);
+  student.lessonsDone = 9;
+  student.lastPaymentDate = student.lastPaymentDate || "2026-04-22";
+  student.status = "Active";
+
+  if (studentIndex >= 0) {
+    data.students[studentIndex] = student;
+  } else {
+    data.students.push(student);
+  }
+
+  removeStudentAttendanceRecords(student.name, student.className);
+  getThaiOneOnOneAttendanceDates().forEach((dateValue, overallLessonIndex) => {
+    const totalLessons = getStudentCycleLessons(student);
+    const cycleIndex = Math.floor(overallLessonIndex / totalLessons);
+    const lessonIndex = overallLessonIndex % totalLessons;
+    const attendanceSession = {
+      className: student.className,
+      startTime: "",
+      endTime: "",
+      date: parseDateValue(dateValue)
+    };
+
+    data.attendance[getAttendanceKey(attendanceSession, student, lessonIndex, cycleIndex)] = true;
+  });
+
+  data.migrations[migrationKey] = true;
+  saveData(false);
+}
+
+function isThaiOneOnOneStudent(student) {
+  const normalizedName = normalizeSearchText(student.name);
+  const normalizedClass = normalizeSearchText(student.className);
+  return normalizedName.includes("thai")
+    && (normalizedClass.includes("1on1 thai") || normalizedClass.includes("1on1"));
+}
+
+function getThaiOneOnOneAttendanceDates() {
+  return [
+    "2026-04-22",
+    "2026-04-29",
+    "2026-05-06",
+    "2026-05-08",
+    "2026-05-14",
+    "2026-05-15",
+    "2026-05-19",
+    "2026-05-26",
+    "2026-05-29"
+  ];
+}
+
+function applyThaiStageFiveReset() {
+  const migrationKey = "thai-stage-5-reset-like-t-anh-stage-6-2026-06-29";
+  if (data.migrations[migrationKey]) return;
+
+  const thaiIndex = data.students.findIndex(student => isThaiStageFiveStudent(student));
+  if (thaiIndex < 0) {
+    data.migrations[migrationKey] = true;
+    saveData(false);
+    return;
+  }
+
+  const referenceStudent = data.students.find(student => isTAnhStageSixStudent(student));
+  const thaiStudent = data.students[thaiIndex];
+
+  thaiStudent.paymentType = referenceStudent?.paymentType || "Monthly";
+  thaiStudent.discountPercent = referenceStudent?.discountPercent || 0;
+  thaiStudent.lessonsDone = Number(referenceStudent?.lessonsDone) || 0;
+  thaiStudent.totalLessons = getStudentCycleLessons(referenceStudent || { paymentType: "Monthly", totalLessons: 8 });
+  thaiStudent.paidLessons = getStudentPaidLessons(referenceStudent || { paymentType: "Monthly", totalLessons: 8, paidLessons: 8 });
+  thaiStudent.lastPaymentDate = referenceStudent?.lastPaymentDate || "";
+  thaiStudent.nextDueDate = referenceStudent?.nextDueDate || "";
+  thaiStudent.status = referenceStudent?.status || "Active";
+
+  removeStudentAttendanceRecords(thaiStudent.name, thaiStudent.className);
+  data.students[thaiIndex] = thaiStudent;
+  data.migrations[migrationKey] = true;
+  saveData(false);
+}
+
+function isThaiStageFiveStudent(student) {
+  const normalizedName = normalizeSearchText(student.name);
+  const normalizedClass = normalizeSearchText(student.className);
+  return normalizedName.includes("thai") && normalizedClass === "stage 5";
+}
+
+function isTAnhStageSixStudent(student) {
+  const normalizedName = normalizeSearchText(student.name);
+  const normalizedClass = normalizeSearchText(student.className);
+  return (normalizedName.includes("t anh") || normalizedName.includes("tanh")) && normalizedClass === "stage 6";
+}
+
+function applyGaoFlyersAttendanceUpdate() {
+  const migrationKey = "gao-flyers-attendance-24-lessons-2026-06-29";
+  if (data.migrations[migrationKey]) return;
+
+  const studentIndex = data.students.findIndex(student => isGaoFlyersStudent(student));
+  const student = studentIndex >= 0
+    ? data.students[studentIndex]
+    : {
+      name: "Gáº¡o",
+      className: "Flyers",
+      contact: "",
+      paymentType: "Course",
+      discountPercent: 0,
+      lessonsDone: 0,
+      totalLessons: 24,
+      paidLessons: 24,
+      lastPaymentDate: "2026-05-06",
+      nextDueDate: "",
+      status: "Active"
+    };
+
+  student.name = repairVietnameseText(student.name || "Gáº¡o");
+  student.className = "Flyers";
+  student.paymentType = "Course";
+  student.totalLessons = 24;
+  student.paidLessons = Math.max(Number(student.paidLessons) || 0, 24);
+  student.lessonsDone = 12;
+  student.lastPaymentDate = "2026-05-06";
+  student.status = "Active";
+
+  if (studentIndex >= 0) {
+    data.students[studentIndex] = student;
+  } else {
+    data.students.push(student);
+  }
+
+  removeStudentAttendanceRecords(student.name, student.className);
+  getGaoFlyersAttendanceDates().forEach((dateValue, lessonIndex) => {
+    const attendanceSession = {
+      className: student.className,
+      startTime: "",
+      endTime: "",
+      date: parseDateValue(dateValue)
+    };
+
+    data.attendance[getAttendanceKey(attendanceSession, student, lessonIndex, 0)] = true;
+  });
+
+  data.migrations[migrationKey] = true;
+  saveData(false);
+}
+
+function isGaoFlyersStudent(student) {
+  const normalizedName = normalizeSearchText(student.name);
+  const normalizedClass = normalizeSearchText(student.className);
+  return normalizedName.includes("gao") && normalizedClass === "flyers";
+}
+
+function getGaoFlyersAttendanceDates() {
+  return [
+    "2026-05-06",
+    "2026-05-08",
+    "2026-05-13",
+    "2026-05-15",
+    "2026-05-20",
+    "2026-05-22",
+    "2026-05-27",
+    "2026-05-29",
+    "2026-06-17",
+    "2026-06-19",
+    "2026-06-24",
+    "2026-06-26"
+  ];
+}
+
+function applyKateOneOnOneAttendanceUpdate() {
+  const migrationKey = "kate-1on1-attendance-8-lessons-2026-06-29";
+  if (data.migrations[migrationKey]) return;
+
+  const studentIndex = data.students.findIndex(student => isKateOneOnOneStudent(student));
+  const student = studentIndex >= 0
+    ? data.students[studentIndex]
+    : {
+      name: "Kate",
+      className: "1on1 Kate",
+      contact: "",
+      paymentType: "Monthly",
+      discountPercent: 0,
+      lessonsDone: 0,
+      totalLessons: 8,
+      paidLessons: 8,
+      lastPaymentDate: "2026-04-20",
+      nextDueDate: "",
+      status: "Active"
+    };
+
+  student.name = repairVietnameseText(student.name || "Kate");
+  student.className = "1on1 Kate";
+  student.paymentType = "Monthly";
+  student.totalLessons = 8;
+  student.paidLessons = Math.max(Number(student.paidLessons) || 0, 8);
+  student.lessonsDone = 7;
+  student.lastPaymentDate = "2026-04-20";
+  student.status = "Active";
+
+  if (studentIndex >= 0) {
+    data.students[studentIndex] = student;
+  } else {
+    data.students.push(student);
+  }
+
+  removeStudentAttendanceRecords(student.name, student.className);
+  getKateOneOnOneAttendanceDates().forEach((dateValue, lessonIndex) => {
+    const attendanceSession = {
+      className: student.className,
+      startTime: "",
+      endTime: "",
+      date: parseDateValue(dateValue)
+    };
+
+    data.attendance[getAttendanceKey(attendanceSession, student, lessonIndex, 0)] = true;
+  });
+
+  data.migrations[migrationKey] = true;
+  saveData(false);
+}
+
+function isKateOneOnOneStudent(student) {
+  const normalizedName = normalizeSearchText(student.name);
+  const normalizedClass = normalizeSearchText(student.className);
+  return normalizedName.includes("kate") && (normalizedClass.includes("1on1 kate") || normalizedClass.includes("1on1"));
+}
+
+function getKateOneOnOneAttendanceDates() {
+  return [
+    "2026-04-20",
+    "2026-04-22",
+    "2026-05-06",
+    "2026-05-13",
+    "2026-05-20",
+    "2026-05-27",
+    "2026-06-27"
+  ];
+}
+
+function applyHHoangStageSixAttendanceUpdate() {
+  const migrationKey = "h-hoang-stage-6-attendance-20-lessons-2026-06-29";
+  if (data.migrations[migrationKey]) return;
+
+  const studentIndex = data.students.findIndex(student => isHHoangStageSixStudent(student));
+  const student = studentIndex >= 0
+    ? data.students[studentIndex]
+    : {
+      name: "H. Hoang",
+      className: "Stage 6",
+      contact: "",
+      paymentType: "Course",
+      discountPercent: 0,
+      lessonsDone: 0,
+      totalLessons: 24,
+      paidLessons: 24,
+      lastPaymentDate: "2026-03-05",
+      nextDueDate: "",
+      status: "Active"
+    };
+
+  student.name = "H. Hoang";
+  student.className = "Stage 6";
+  student.paymentType = "Course";
+  student.totalLessons = 24;
+  student.paidLessons = Math.max(Number(student.paidLessons) || 0, 24);
+  student.lessonsDone = 20;
+  student.lastPaymentDate = "2026-03-05";
+  student.status = "Active";
+
+  if (studentIndex >= 0) {
+    data.students[studentIndex] = student;
+  } else {
+    data.students.push(student);
+  }
+
+  removeStudentAttendanceRecords(student.name, student.className);
+  getHHoangStageSixAttendanceDates().forEach((dateValue, lessonIndex) => {
+    const attendanceSession = {
+      className: student.className,
+      startTime: "",
+      endTime: "",
+      date: parseDateValue(dateValue)
+    };
+
+    data.attendance[getAttendanceKey(attendanceSession, student, lessonIndex, 0)] = true;
+  });
+
+  data.migrations[migrationKey] = true;
+  saveData(false);
+}
+
+function isHHoangStageSixStudent(student) {
+  const normalizedName = normalizeSearchText(student.name);
+  const normalizedClass = normalizeSearchText(student.className);
+  return normalizedName.includes("hoang") && normalizedClass === "stage 6";
+}
+
+function getHHoangStageSixAttendanceDates() {
+  return [
+    "2026-03-05",
+    "2026-03-10",
+    "2026-03-12",
+    "2026-03-17",
+    "2026-03-19",
+    "2026-03-24",
+    "2026-03-26",
+    "2026-03-31",
+    "2026-04-02",
+    "2026-04-07",
+    "2026-04-09",
+    "2026-04-14",
+    "2026-04-16",
+    "2026-04-21",
+    "2026-04-23",
+    "2026-05-05",
+    "2026-05-14",
+    "2026-05-19",
+    "2026-05-21",
+    "2026-05-26"
+  ];
+}
+
+function applyMNhatStageFourAttendanceUpdate() {
+  const migrationKey = "m-nhat-stage-4-attendance-2-lessons-2026-06-30";
+  if (data.migrations[migrationKey]) return;
+
+  const studentIndex = data.students.findIndex(student => isMNhatStageFourStudent(student));
+  const student = studentIndex >= 0
+    ? data.students[studentIndex]
+    : {
+      name: "M. Nhật",
+      className: "Stage 4",
+      contact: "",
+      paymentType: "Monthly",
+      discountPercent: 0,
+      lessonsDone: 0,
+      totalLessons: 8,
+      paidLessons: 8,
+      lastPaymentDate: "2026-06-29",
+      nextDueDate: "",
+      status: "Active"
+    };
+
+  student.name = "M. Nhật";
+  student.className = "Stage 4";
+  student.paymentType = "Monthly";
+  student.discountPercent = 0;
+  student.totalLessons = 8;
+  student.paidLessons = 8;
+  student.lessonsDone = 2;
+  student.lastPaymentDate = "2026-06-29";
+  student.nextDueDate = student.nextDueDate || "";
+  student.status = "Active";
+
+  if (studentIndex >= 0) {
+    data.students[studentIndex] = student;
+  } else {
+    data.students.push(student);
+  }
+
+  removeStudentAttendanceRecords(student.name, student.className);
+  getMNhatStageFourAttendanceDates().forEach((dateValue, lessonIndex) => {
+    const attendanceSession = {
+      className: student.className,
+      startTime: "",
+      endTime: "",
+      date: parseDateValue(dateValue)
+    };
+
+    data.attendance[getAttendanceKey(attendanceSession, student, lessonIndex, 0)] = true;
+  });
+
+  data.migrations[migrationKey] = true;
+  saveData(false);
+}
+
+function isMNhatStageFourStudent(student) {
+  const normalizedName = normalizeSearchText(student.name);
+  const normalizedClass = normalizeSearchText(student.className);
+  return normalizedName.includes("m. nhat") && normalizedClass === "stage 4";
+}
+
+function getMNhatStageFourAttendanceDates() {
+  return [
+    "2026-06-29",
+    "2026-06-30"
+  ];
+}
+
+function recoverLegacyTeachersForCurrentWeek() {
+  if (legacyTeachersRecovered) return;
+
+  const currentWeekDates = getCurrentWeekDates();
+  let recovered = false;
+
+  data.classes.forEach(classItem => {
+    parseScheduleSlots(classItem.schedule).forEach(slot => {
+      const classSlot = {
+        className: classItem.name,
+        startTime: slot.startTime,
+        endTime: slot.endTime
+      };
+      const dayIndex = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(slot.day);
+      const legacyKey = getLegacyTeacherKey(slot.day, classSlot);
+      const dateKey = getTeacherKey(slot.day, classSlot, currentWeekDates[dayIndex]);
+
+      if (data.teachers[legacyKey] && !data.teachers[dateKey]) {
+        data.teachers[dateKey] = data.teachers[legacyKey];
+        recovered = true;
+      }
+    });
+  });
+
+  legacyTeachersRecovered = true;
+  if (recovered) saveData(false);
+}
+
+function renderStudents() {
+  studentRows.innerHTML = "";
+
+  const entries = getFilteredStudentEntries();
+
+  if (!entries.length) {
+    appendStudentGroupRow("No students found.");
+    return;
+  }
+
+  let currentGroup = "";
+
+  entries.forEach(({ student, index }, displayIndex) => {
+    const groupName = getStudentDisplayGroup(student);
+    if (groupName !== currentGroup) {
+      appendStudentGroupRow(groupName);
+      currentGroup = groupName;
+    }
+
+    const row = document.createElement("tr");
+
+    row.append(createPlainCell(displayIndex + 1, "stt-cell"));
+    row.append(createPlainCell(student.name, "plain-cell"));
+    row.append(createPlainCell(student.className, "plain-cell"));
+    row.append(createPlainCell(student.contact || "-", "plain-cell muted-cell"));
+    row.append(createPlainCell(formatPaymentType(student), "plain-cell"));
+    row.append(createPlainCell(student.lessonsDone, "plain-cell"));
+    row.append(createReminderCell(student));
+    row.append(createPlainCell(student.lastPaymentDate || "-", "plain-cell muted-cell"));
+    row.append(createPlainCell(student.nextDueDate || "-", "plain-cell muted-cell"));
+    row.append(createPlainCell(student.status, "plain-cell"));
+    row.append(createStudentActionCell(index));
+
+    studentRows.append(row);
+  });
+}
+
+function renderClasses() {
+  classRows.innerHTML = "";
+  stoppedClassRows.innerHTML = "";
+
+  const activeClassEntries = getFilteredClassEntries()
+    .filter(({ classItem }) => !isStoppedClass(classItem));
+  const stoppedClassEntries = getFilteredClassEntries()
+    .filter(({ classItem }) => isStoppedClass(classItem));
+
+  renderClassEntryGroups(activeClassEntries, classRows, !classListFilter.value);
+  renderClassEntryGroups(stoppedClassEntries, stoppedClassRows, false);
+
+  if (!stoppedClassRows.children.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.className = "muted-cell";
+    cell.textContent = "No stopped classes.";
+    row.append(cell);
+    stoppedClassRows.append(row);
+  }
+}
+
+function renderClassEntryGroups(entries, targetBody, showEmptyGroups) {
+  const groups = getClassDisplayGroups(entries);
+
+  groups.forEach(group => {
+    if (!group.entries.length && !showEmptyGroups) return;
+    appendClassGroupRow(targetBody, group.label);
+
+    if (!group.entries.length) {
+      const emptyRow = document.createElement("tr");
+      const emptyCell = document.createElement("td");
+      emptyCell.colSpan = 4;
+      emptyCell.className = "muted-cell";
+      emptyCell.textContent = "No classes in this group.";
+      emptyRow.append(emptyCell);
+      targetBody.append(emptyRow);
+      return;
+    }
+
+    group.entries.forEach(({ classItem, index }) => {
+    const row = document.createElement("tr");
+
+    row.append(createPlainCell(classItem.name, "readonly-cell"));
+    row.append(createAutomaticStudentCell(classItem));
+    row.append(createScheduleCell(classItem, index));
+    row.append(createClassActionCell(classItem, index));
+
+      targetBody.append(row);
+    });
+  });
+}
+
+function appendStudentGroupRow(label) {
+  const row = document.createElement("tr");
+  const cell = document.createElement("td");
+  cell.colSpan = 11;
+  cell.className = "table-group-row";
+  cell.textContent = label;
+  row.append(cell);
+  studentRows.append(row);
+}
+
+function appendClassGroupRow(targetBody, label) {
+  const row = document.createElement("tr");
+  const cell = document.createElement("td");
+  cell.colSpan = 4;
+  cell.className = "table-group-row";
+  cell.textContent = label;
+  row.append(cell);
+  targetBody.append(row);
+}
+
+function createPlainCell(text, className = "") {
+  const cell = document.createElement("td");
+  cell.textContent = text;
+  if (className) cell.className = className;
+  return cell;
+}
+
+function createInputCell(value, onChange, type = "text") {
+  const cell = document.createElement("td");
+  const input = document.createElement("input");
+  input.type = type;
+  input.value = value;
+  input.addEventListener("input", event => onChange(event.target.value));
+  cell.append(input);
+  return cell;
+}
+
+function createScheduleCell(classItem, index) {
+  const cell = document.createElement("td");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "schedule-button";
+  button.textContent = getClassScheduleForWeek(classItem, selectedWeekStart) || classItem.schedule || "Choose schedule";
+  button.disabled = isStoppedClass(classItem);
+  button.addEventListener("click", () => openScheduleModal(index));
+  cell.append(button);
+  return cell;
+}
+
+function createClassActionCell(classItem, index) {
+  const cell = document.createElement("td");
+  const actions = document.createElement("div");
+  const renameButton = document.createElement("button");
+  const statusButton = document.createElement("button");
+
+  actions.className = "class-action-cell";
+
+  renameButton.type = "button";
+  renameButton.className = "rename-class-button";
+  renameButton.textContent = "Rename";
+  renameButton.addEventListener("click", () => renameClass(index));
+
+  statusButton.type = "button";
+  statusButton.className = isStoppedClass(classItem) ? "restore-class-button" : "stop-class-button";
+  statusButton.textContent = isStoppedClass(classItem) ? "Reactivate" : "Stop from week";
+  statusButton.addEventListener("click", () => {
+    if (isStoppedClass(classItem)) {
+      reactivateClass(index);
+    } else {
+      stopClass(index);
+    }
+  });
+  actions.append(renameButton, statusButton);
+  cell.append(actions);
+  return cell;
+}
+
+function createLessonsCell(value, onChange) {
+  const cell = document.createElement("td");
+  const input = document.createElement("input");
+  input.type = "number";
+  input.value = value;
+  input.classList.add("lesson-input");
+  input.min = "0";
+  input.step = "1";
+  input.addEventListener("input", event => onChange(event.target.value));
+  input.addEventListener("change", () => renderStudents());
+  cell.append(input);
+  return cell;
+}
+
+function createClassInputCell(value, onChange) {
+  const cell = createInputCell(value, onChange);
+  const input = cell.querySelector("input");
+  input.setAttribute("list", "classOptions");
+  input.addEventListener("change", event => {
+    ensureClassExists(event.target.value);
+    syncClassStudents();
+    saveData(false);
+    render();
+  });
+  return cell;
+}
+
+function createReminderCell(student) {
+  const cell = document.createElement("td");
+  const reminder = getPaymentReminder(student);
+  cell.className = `reminder-cell ${reminder.className}`;
+  cell.textContent = reminder.text;
+  return cell;
+}
+
+function createAutomaticStudentCell(classItem) {
+  const cell = document.createElement("td");
+  const list = document.createElement("div");
+  const studentNames = String(classItem.students || "")
+    .split(",")
+    .map(name => name.trim())
+    .filter(Boolean);
+
+  cell.className = "auto-cell";
+
+  if (!studentNames.length) {
+    cell.classList.add("empty-auto-cell");
+    cell.textContent = "No students yet";
+    return cell;
+  }
+
+  list.className = "class-student-tags";
+  studentNames.forEach(name => {
+    const tag = document.createElement("span");
+    const student = findStudentByNameAndClass(name, classItem.name);
+    tag.className = student?.status === "Temporary pause" ? "class-student-tag paused-class-student" : "class-student-tag";
+    tag.textContent = name;
+    if (student?.status === "Temporary pause") tag.title = "Temporary pause";
+    list.append(tag);
+  });
+
+  cell.append(list);
+  return cell;
+}
+
+function findStudentByNameAndClass(name, className) {
+  return data.students.find(student =>
+    normalizeSearchText(student.name) === normalizeSearchText(name)
+    && normalizeSearchText(student.className) === normalizeSearchText(className)
+  );
+}
+
+function createSelectCell(value, options, onChange) {
+  const cell = document.createElement("td");
+  const select = document.createElement("select");
+
+  options.forEach(optionText => {
+    const option = document.createElement("option");
+    option.value = optionText;
+    option.textContent = optionText;
+    select.append(option);
+  });
+
+  select.value = value;
+  select.addEventListener("change", event => onChange(event.target.value));
+  cell.append(select);
+  return cell;
+}
+
+function createStatusCell(value, onChange) {
+  const cell = createSelectCell(value, ["Active", "Temporary pause", "Stopped"], newValue => {
+    onChange(newValue);
+    render();
+  });
+  const select = cell.querySelector("select");
+  select.classList.add("status-select");
+  applyStatusStyle(select, value);
+  select.addEventListener("change", event => applyStatusStyle(event.target, event.target.value));
+  return cell;
+}
+
+function createDeleteCell(onDelete) {
+  const cell = document.createElement("td");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "delete-button";
+  button.textContent = "x";
+  button.title = "Delete row";
+  button.addEventListener("click", onDelete);
+  cell.className = "action-cell";
+  cell.append(button);
+  return cell;
+}
+
+function createEditCell(index) {
+  const cell = document.createElement("td");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "edit-button";
+  button.textContent = "Edit";
+  button.addEventListener("click", () => openStudentModal(index));
+  cell.className = "action-cell";
+  cell.append(button);
+  return cell;
+}
+
+function createStudentActionCell(index) {
+  const cell = document.createElement("td");
+  const paymentButton = document.createElement("button");
+  const editButton = document.createElement("button");
+
+  cell.className = "student-action-cell";
+  paymentButton.type = "button";
+  paymentButton.className = "payment-button";
+  paymentButton.textContent = "Payment";
+  paymentButton.addEventListener("click", () => openPaymentModal(index));
+
+  editButton.type = "button";
+  editButton.className = "edit-button";
+  editButton.textContent = "Edit";
+  editButton.addEventListener("click", () => openStudentModal(index));
+
+  cell.append(paymentButton, editButton);
+  return cell;
+}
+
+function applyStatusStyle(select, status) {
+  select.classList.remove("status-active", "status-pause", "status-stopped");
+
+  if (status === "Active") select.classList.add("status-active");
+  if (status === "Temporary pause") select.classList.add("status-pause");
+  if (status === "Stopped") select.classList.add("status-stopped");
+}
+
+function updateStudent(index, key, value) {
+  const previousStudent = { ...data.students[index] };
+  data.students[index][key] = key === "lessonsDone" ? Math.max(0, Number(value) || 0) : value;
+  if (key === "name" || key === "className") {
+    migrateStudentLinkedRecords(previousStudent, data.students[index]);
+    syncClassStudents();
+    renderClasses();
+    renderClassOptions();
+  }
+  if (key === "paymentType") {
+    renderStudents();
+  }
+  saveData(false);
+  updateDashboard();
+}
+
+function updateClass(index, key, value) {
+  data.classes[index][key] = value;
+  saveData(false);
+}
+
+function stopEditingClass() {
+  if (editingScheduleIndex === null) return;
+  stopClass(editingScheduleIndex);
+  closeScheduleModal();
+}
+
+function stopClass(index) {
+  const classItem = data.classes[index];
+  const weekLabel = formatStoredDate(formatDateValue(selectedWeekStart));
+  const confirmed = window.confirm(`Stop ${classItem.name} from week ${weekLabel}? Past schedules will stay unchanged.`);
+  if (!confirmed) return;
+
+  setClassStatusFromSelectedWeek(data.classes[index], "Stopped");
+  saveData(true);
+  renderClasses();
+  renderWeeklySchedule();
+  renderAttendanceBoard();
+  updateDashboard();
+}
+
+function reactivateClass(index) {
+  const classItem = data.classes[index];
+  const weekLabel = formatStoredDate(formatDateValue(selectedWeekStart));
+  const confirmed = window.confirm(`Reactivate ${classItem.name} from week ${weekLabel}? Past off weeks will stay unchanged.`);
+  if (!confirmed) return;
+
+  setClassStatusFromSelectedWeek(data.classes[index], "Active");
+  saveData(true);
+  renderClasses();
+  renderWeeklySchedule();
+  renderAttendanceBoard();
+  updateDashboard();
+}
+
+function renameClass(index) {
+  const classItem = data.classes[index];
+  if (!classItem) return;
+
+  const oldName = String(classItem.name || "").trim();
+  const typedName = window.prompt("Enter the new class name:", oldName);
+  if (typedName === null) return;
+
+  const newName = repairVietnameseText(typedName).trim();
+  if (!newName) {
+    window.alert("Class name cannot be empty.");
+    return;
+  }
+
+  if (normalizeSearchText(newName) === normalizeSearchText(oldName)) {
+    if (newName !== oldName) {
+      backupBeforeClassRenameOnce();
+      renameClassEverywhere(oldName, newName);
+      saveData(true);
+      render();
+    }
+    return;
+  }
+
+  const duplicate = data.classes.some((item, itemIndex) =>
+    itemIndex !== index && normalizeSearchText(item.name) === normalizeSearchText(newName)
+  );
+  if (duplicate) {
+    window.alert("This class name already exists. Please choose a different name.");
+    return;
+  }
+
+  const confirmed = window.confirm(`Rename "${oldName}" to "${newName}" everywhere in Mandy English?`);
+  if (!confirmed) return;
+
+  backupBeforeClassRenameOnce();
+  renameClassEverywhere(oldName, newName);
+  saveData(true);
+  render();
+}
+
+function renameClassEverywhere(oldName, newName) {
+  const oldSearch = normalizeSearchText(oldName);
+
+  data.classes.forEach(classItem => {
+    if (normalizeSearchText(classItem.name) === oldSearch) {
+      classItem.name = newName;
+    }
+  });
+
+  data.students.forEach(student => {
+    if (normalizeSearchText(student.className) === oldSearch) {
+      student.className = newName;
+    }
+  });
+
+  renameScheduleHistoryKey(oldName, newName);
+  data.teachers = renameClassInTeacherKeys(data.teachers, oldName, newName);
+  data.completedSessions = renameClassInPipeKeys(data.completedSessions, oldName, newName, 1);
+  data.finance.sessionCosts = renameClassInPipeKeys(data.finance?.sessionCosts, oldName, newName, 1);
+  data.finance.sessionStudents = renameClassInPipeKeys(data.finance?.sessionStudents, oldName, newName, 1);
+  data.attendance = renameClassInPipeKeys(data.attendance, oldName, newName, 1);
+  data.attendanceNotes = renameClassInPipeKeys(data.attendanceNotes, oldName, newName, 0);
+  renameFinanceClassFee(oldName, newName);
+  data.lessonLogs = data.lessonLogs.map(log => {
+    const nextLog = { ...log };
+    if (normalizeSearchText(nextLog.className) === oldSearch) nextLog.className = newName;
+    nextLog.sessionKey = renameClassInPipeKey(nextLog.sessionKey, oldName, newName, 1);
+    return nextLog;
+  });
+
+  if (classListFilter.value && normalizeSearchText(classListFilter.value) === oldSearch) classListFilter.value = newName;
+  if (filterClass.value && normalizeSearchText(filterClass.value) === oldSearch) filterClass.value = newName;
+  if (attendanceClassFilter.value && normalizeSearchText(attendanceClassFilter.value) === oldSearch) attendanceClassFilter.value = newName;
+  if (lessonLogClassFilter.value && normalizeSearchText(lessonLogClassFilter.value) === oldSearch) lessonLogClassFilter.value = newName;
+
+  attendanceCycleViews.clear();
+  syncClassStudents();
+  normalizeData();
+}
+
+function renameFinanceClassFee(oldName, newName) {
+  const oldKey = getFinanceClassKey(oldName);
+  const newKey = getFinanceClassKey(newName);
+  if (!data.finance?.classFees || !Object.prototype.hasOwnProperty.call(data.finance.classFees, oldKey)) return;
+
+  data.finance.classFees[newKey] = data.finance.classFees[oldKey];
+  if (oldKey !== newKey) delete data.finance.classFees[oldKey];
+}
+
+function renameScheduleHistoryKey(oldName, newName) {
+  const oldKey = getScheduleHistoryKey(oldName);
+  const newKey = getScheduleHistoryKey(newName);
+  const oldHistory = Array.isArray(data.scheduleHistory[oldKey]) ? data.scheduleHistory[oldKey] : [];
+  const newHistory = Array.isArray(data.scheduleHistory[newKey]) ? data.scheduleHistory[newKey] : [];
+
+  if (!oldHistory.length && !newHistory.length) return;
+
+  data.scheduleHistory[newKey] = normalizeScheduleHistory([...newHistory, ...oldHistory]);
+  if (oldKey !== newKey) delete data.scheduleHistory[oldKey];
+}
+
+function normalizeScheduleHistory(history) {
+  const byWeek = new Map();
+
+  history
+    .filter(entry => entry && entry.effectiveFrom && typeof entry.schedule === "string")
+    .forEach(entry => {
+      byWeek.set(entry.effectiveFrom, {
+        effectiveFrom: entry.effectiveFrom,
+        schedule: normalizeSchedule(entry.schedule)
+      });
+    });
+
+  return [...byWeek.values()].sort((first, second) => first.effectiveFrom.localeCompare(second.effectiveFrom));
+}
+
+function renameClassInTeacherKeys(source, oldName, newName) {
+  return Object.entries(source || {}).reduce((renamed, [key, value]) => {
+    const parts = key.split("|");
+    const classPartIndex = parts.length === 4 ? 1 : parts.length === 5 ? 2 : -1;
+    const nextKey = classPartIndex >= 0 ? renameClassInPipeKey(key, oldName, newName, classPartIndex) : key;
+    renamed[nextKey] = value;
+    return renamed;
+  }, {});
+}
+
+function renameClassInPipeKeys(source, oldName, newName, classPartIndex) {
+  return Object.entries(source || {}).reduce((renamed, [key, value]) => {
+    const nextKey = renameClassInPipeKey(key, oldName, newName, classPartIndex);
+    renamed[nextKey] = value;
+    return renamed;
+  }, {});
+}
+
+function renameClassInPipeKey(key, oldName, newName, classPartIndex) {
+  const parts = String(key || "").split("|");
+  if (parts.length <= classPartIndex) return key;
+  if (normalizeSearchText(parts[classPartIndex]) !== normalizeSearchText(oldName)) return key;
+
+  parts[classPartIndex] = newName;
+  return parts.join("|");
+}
+
+function migrateStudentLinkedRecords(oldStudent, newStudent) {
+  if (!oldStudent || !newStudent) return;
+
+  const oldClassName = String(oldStudent.className || "").trim();
+  const oldStudentName = String(oldStudent.name || "").trim();
+  const newClassName = String(newStudent.className || "").trim();
+  const newStudentName = String(newStudent.name || "").trim();
+
+  if (!oldClassName || !oldStudentName || !newClassName || !newStudentName) return;
+  if (
+    normalizeSearchText(oldClassName) === normalizeSearchText(newClassName)
+    && normalizeSearchText(oldStudentName) === normalizeSearchText(newStudentName)
+  ) return;
+
+  data.attendance = migrateStudentAttendanceKeys(data.attendance, oldStudent, newStudent);
+  data.attendanceNotes = migrateStudentAttendanceNoteKeys(data.attendanceNotes, oldStudent, newStudent);
+  data.lessonLogs = data.lessonLogs.map(log => ({
+    ...log,
+    studentNotes: log.studentNotes.map(note => (
+      normalizeSearchText(note.studentName) === normalizeSearchText(oldStudentName)
+        ? { ...note, studentName: newStudentName }
+        : note
+    ))
+  }));
+}
+
+function migrateStudentAttendanceKeys(source, oldStudent, newStudent) {
+  return Object.entries(source || {}).reduce((renamed, [key, value]) => {
+    const parts = key.split("|");
+
+    if (parts.length >= 6
+      && normalizeSearchText(parts[1]) === normalizeSearchText(oldStudent.className)
+      && normalizeSearchText(parts[4]) === normalizeSearchText(oldStudent.name)) {
+      const historicalParts = [...parts];
+      historicalParts[4] = newStudent.name;
+      renamed[historicalParts.join("|")] = value;
+      return renamed;
+    }
+
+    renamed[key] = value;
+    return renamed;
+  }, {});
+}
+
+function migrateStudentAttendanceNoteKeys(source, oldStudent, newStudent) {
+  return Object.entries(source || {}).reduce((renamed, [key, value]) => {
+    const parts = key.split("|");
+    const classChanged = normalizeSearchText(oldStudent.className) !== normalizeSearchText(newStudent.className);
+
+    if (parts.length >= 3
+      && normalizeSearchText(parts[0]) === normalizeSearchText(oldStudent.className)
+      && normalizeSearchText(parts[1]) === normalizeSearchText(oldStudent.name)) {
+      const historicalParts = [...parts];
+      historicalParts[1] = newStudent.name;
+      renamed[historicalParts.join("|")] = value;
+
+      if (classChanged) {
+        const currentClassParts = [...parts];
+        currentClassParts[0] = newStudent.className;
+        currentClassParts[1] = newStudent.name;
+        renamed[currentClassParts.join("|")] = value;
+      }
+      return renamed;
+    }
+
+    renamed[key] = value;
+    return renamed;
+  }, {});
+}
+
+function isStoppedClass(classItem) {
+  return getClassStatusForWeek(classItem, selectedWeekStart) === "Stopped";
+}
+
+function setClassStatusFromSelectedWeek(classItem, status) {
+  const effectiveFrom = formatDateValue(selectedWeekStart);
+  const history = getClassStatusHistory(classItem);
+  const previousStatus = getClassStatusForWeek(classItem, addDays(selectedWeekStart, -7));
+
+  if (!history.length) {
+    history.push({
+      effectiveFrom: "1900-01-01",
+      status: previousStatus
+    });
+  }
+
+  const existingIndex = history.findIndex(entry => entry.effectiveFrom === effectiveFrom);
+  if (existingIndex >= 0) {
+    history[existingIndex].status = status;
+  } else {
+    history.push({
+      effectiveFrom,
+      status
+    });
+  }
+
+  classItem.statusHistory = normalizeClassStatusHistory(history);
+  classItem.status = getLatestClassStatus(classItem.statusHistory) || status;
+}
+
+function getClassStatusForWeek(classItem, weekStart) {
+  const history = getClassStatusHistory(classItem);
+  const weekValue = formatDateValue(weekStart);
+  const effectiveEntry = history
+    .filter(entry => entry.effectiveFrom <= weekValue)
+    .sort((first, second) => second.effectiveFrom.localeCompare(first.effectiveFrom))[0];
+
+  return effectiveEntry ? effectiveEntry.status : classItem.status === "Stopped" ? "Stopped" : "Active";
+}
+
+function getClassStatusHistory(classItem) {
+  return normalizeClassStatusHistory(classItem.statusHistory);
+}
+
+function getLatestClassStatus(history) {
+  const latestEntry = [...history].sort((first, second) => second.effectiveFrom.localeCompare(first.effectiveFrom))[0];
+  return latestEntry ? latestEntry.status : "";
+}
+
+function openScheduleModal(index) {
+  editingScheduleIndex = index;
+  scheduleRows.innerHTML = "";
+  document.querySelector("#scheduleModalTitle").textContent = data.classes[index].name;
+  document.querySelector('input[name="scheduleApplyScope"][value="from-week"]').checked = true;
+
+  const slots = parseScheduleSlots(getClassScheduleForWeek(data.classes[index], selectedWeekStart));
+  if (slots.length) {
+    slots.forEach(slot => addSchedulePickerRow(slot.day, slot.startTime, slot.endTime));
+  } else {
+    addSchedulePickerRow();
+  }
+
+  scheduleModal.classList.add("open");
+  scheduleModal.setAttribute("aria-hidden", "false");
+}
+
+function closeScheduleModal() {
+  scheduleModal.classList.remove("open");
+  scheduleModal.setAttribute("aria-hidden", "true");
+  editingScheduleIndex = null;
+}
+
+function addSchedulePickerRow(day = "Mon", startTime = "18:00", endTime = "19:00") {
+  const row = document.createElement("div");
+  const [startHour = "18", startMinute = "00"] = startTime.split(":");
+  const [endHour = "19", endMinute = "00"] = endTime.split(":");
+  row.className = "schedule-row";
+  row.innerHTML = `
+    <select class="schedule-day">
+      <option value="Mon">Mon</option>
+      <option value="Tue">Tue</option>
+      <option value="Wed">Wed</option>
+      <option value="Thu">Thu</option>
+      <option value="Fri">Fri</option>
+      <option value="Sat">Sat</option>
+      <option value="Sun">Sun</option>
+    </select>
+    <select class="schedule-start-hour" aria-label="Start hour"></select>
+    <select class="schedule-start-minute" aria-label="Start minute"></select>
+    <select class="schedule-end-hour" aria-label="End hour"></select>
+    <select class="schedule-end-minute" aria-label="End minute"></select>
+    <button class="schedule-remove" type="button" aria-label="Remove time">x</button>
+  `;
+
+  row.querySelector(".schedule-day").value = day;
+  fillNumberSelect(row.querySelector(".schedule-start-hour"), 0, 23, startHour);
+  fillNumberSelect(row.querySelector(".schedule-start-minute"), 0, 55, startMinute, 5);
+  fillNumberSelect(row.querySelector(".schedule-end-hour"), 0, 23, endHour);
+  fillNumberSelect(row.querySelector(".schedule-end-minute"), 0, 55, endMinute, 5);
+  row.querySelector(".schedule-remove").addEventListener("click", () => {
+    if (scheduleRows.children.length > 1) row.remove();
+  });
+  scheduleRows.append(row);
+}
+
+function saveScheduleFromPicker() {
+  if (editingScheduleIndex === null) return;
+
+  const classItem = data.classes[editingScheduleIndex];
+  const applyScope = document.querySelector('input[name="scheduleApplyScope"]:checked')?.value || "from-week";
+  const slots = [...scheduleRows.querySelectorAll(".schedule-row")]
+    .map(row => ({
+      day: row.querySelector(".schedule-day").value,
+      startTime: `${row.querySelector(".schedule-start-hour").value}:${row.querySelector(".schedule-start-minute").value}`,
+      endTime: `${row.querySelector(".schedule-end-hour").value}:${row.querySelector(".schedule-end-minute").value}`
+    }))
+    .filter(slot => slot.day && slot.startTime && slot.endTime);
+
+  const newSchedule = slots.map(slot => `${slot.day}, ${slot.startTime}-${slot.endTime}`).join(" | ");
+
+  if (applyScope === "all-weeks") {
+    applyScheduleToAllWeeks(classItem, newSchedule);
+  } else {
+    applyScheduleFromSelectedWeek(classItem, newSchedule);
+  }
+
+  saveData(true);
+  renderClasses();
+  renderWeeklySchedule();
+  renderAttendanceBoard();
+  closeScheduleModal();
+}
+
+function applyScheduleToAllWeeks(classItem, newSchedule) {
+  classItem.schedule = normalizeSchedule(newSchedule);
+  data.scheduleHistory[getScheduleHistoryKey(classItem.name)] = [
+    {
+      effectiveFrom: "1900-01-01",
+      schedule: classItem.schedule
+    }
+  ];
+}
+
+function applyScheduleFromSelectedWeek(classItem, newSchedule) {
+  const historyKey = getScheduleHistoryKey(classItem.name);
+  const effectiveFrom = formatDateValue(selectedWeekStart);
+  const previousSchedule = getClassScheduleForWeek(classItem, addDays(selectedWeekStart, -7)) || classItem.schedule || "";
+  const normalizedSchedule = normalizeSchedule(newSchedule);
+  const history = getScheduleHistory(classItem.name);
+
+  if (!history.length) {
+    history.push({
+      effectiveFrom: "1900-01-01",
+      schedule: normalizeSchedule(previousSchedule)
+    });
+  }
+
+  const existingIndex = history.findIndex(entry => entry.effectiveFrom === effectiveFrom);
+  if (existingIndex >= 0) {
+    history[existingIndex].schedule = normalizedSchedule;
+  } else {
+    history.push({
+      effectiveFrom,
+      schedule: normalizedSchedule
+    });
+  }
+
+  history.sort((first, second) => first.effectiveFrom.localeCompare(second.effectiveFrom));
+  data.scheduleHistory[historyKey] = history;
+  classItem.schedule = getLatestScheduleFromHistory(history) || normalizedSchedule;
+}
+
+function getClassScheduleForWeek(classItem, weekStart) {
+  const history = getScheduleHistory(classItem.name);
+  const weekValue = formatDateValue(weekStart);
+  const effectiveEntry = history
+    .filter(entry => entry.effectiveFrom <= weekValue)
+    .sort((first, second) => second.effectiveFrom.localeCompare(first.effectiveFrom))[0];
+
+  return effectiveEntry ? effectiveEntry.schedule : classItem.schedule || "";
+}
+
+function getScheduleHistory(className) {
+  const history = data.scheduleHistory[getScheduleHistoryKey(className)];
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .filter(entry => entry && entry.effectiveFrom && typeof entry.schedule === "string")
+    .map(entry => ({
+      effectiveFrom: entry.effectiveFrom,
+      schedule: normalizeSchedule(entry.schedule)
+    }));
+}
+
+function getLatestScheduleFromHistory(history) {
+  const latestEntry = [...history].sort((first, second) => second.effectiveFrom.localeCompare(first.effectiveFrom))[0];
+  return latestEntry ? latestEntry.schedule : "";
+}
+
+function getScheduleHistoryKey(className) {
+  return String(className || "").trim();
+}
+
+function parseScheduleSlots(schedule) {
+  return schedule
+    .split("|")
+    .map(slot => slot.trim())
+    .filter(Boolean)
+    .map(slot => {
+      const [dayPart, timePart] = slot.split(",").map(part => part.trim());
+      const [startTime, endTime] = normalizeTimeRange(timePart || "18:00");
+      return { day: dayPart || "Mon", startTime, endTime };
+    });
+}
+
+function normalizeTimeRange(timeText) {
+  const cleanTime = timeText.replace(".", ":");
+  const [startTime = "18:00", endTime] = cleanTime.split("-").map(part => part.trim());
+  return [startTime, endTime || addOneHour(startTime)];
+}
+
+function addOneHour(timeText) {
+  const [hourText = "18", minuteText = "00"] = timeText.split(":");
+  const hour = (Number(hourText) + 1) % 24;
+  return `${String(hour).padStart(2, "0")}:${minuteText.padStart(2, "0")}`;
+}
+
+function fillNumberSelect(select, min, max, selectedValue, step = 1) {
+  select.innerHTML = "";
+
+  for (let number = min; number <= max; number += step) {
+    const value = String(number).padStart(2, "0");
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    select.append(option);
+  }
+
+  select.value = String(Number(selectedValue) || 0).padStart(2, "0");
+}
+
+
+function getClassesForDay(day) {
+  return getClassesForDayForWeek(day, selectedWeekStart);
+}
+
+function getClassesForDayForWeek(day, weekStart) {
+  return data.classes
+    .filter(classItem => getClassStatusForWeek(classItem, weekStart) !== "Stopped")
+    .flatMap(classItem => parseScheduleSlots(getClassScheduleForWeek(classItem, weekStart))
+      .filter(slot => slot.day === day)
+      .map(slot => ({ className: classItem.name, startTime: slot.startTime, endTime: slot.endTime })))
+    .sort((first, second) => first.startTime.localeCompare(second.startTime));
+}
+
+function getTeacherKey(day, classSlot, date) {
+  return [formatDateValue(date), day, classSlot.className, classSlot.startTime, classSlot.endTime].join("|");
+}
+
+function getLegacyTeacherKey(day, classSlot) {
+  return [day, classSlot.className, classSlot.startTime, classSlot.endTime].join("|");
+}
+
+function getCurrentWeekLegacyTeacher(legacyTeacherKey) {
+  return getLegacyTeacherForWeek(legacyTeacherKey, selectedWeekStart);
+}
+
+function getLegacyTeacherForWeek(legacyTeacherKey, weekStart) {
+  if (!isSameDate(weekStart, getWeekStart(new Date()))) return "";
+  return data.teachers[legacyTeacherKey] || "";
+}
+
+function updateTeacherName(key, value) {
+  const teacherName = value.trim();
+  if (teacherName) {
+    data.teachers[key] = teacherName;
+  } else {
+    delete data.teachers[key];
+  }
+  saveData(false);
+}
+
+function isOffTeacher(teacher) {
+  return String(teacher || "").trim().toLowerCase() === "off";
+}
+
+function toggleSessionDone(day, classSlot, date) {
+  const session = {
+    ...classSlot,
+    date,
+    day
+  };
+  const sessionKey = getSessionKey(session);
+  const teacherKey = getTeacherKey(day, classSlot, date);
+  const legacyTeacherKey = getLegacyTeacherKey(day, classSlot);
+  const teacher = data.teachers[teacherKey] || getCurrentWeekLegacyTeacher(legacyTeacherKey);
+
+  if (!data.completedSessions[sessionKey] && !isTeachingTeacher(teacher)) {
+    window.alert("Please enter a teacher name before marking this class as Done.");
+    return;
+  }
+
+  if (data.completedSessions[sessionKey]) {
+    const confirmed = window.confirm(
+      `Remove Done for ${session.className} on ${formatStoredDate(formatDateValue(session.date))}?\n\nThis will remove the attendance date for every active student in this class and delete this lesson log.`
+    );
+    if (!confirmed) return;
+
+    delete data.completedSessions[sessionKey];
+    deleteFinanceSessionSnapshot(sessionKey);
+    removeSessionAttendance(session);
+    removeLessonLog(sessionKey);
+    normalizeData();
+    saveData(true);
+    renderStudents();
+    renderWeeklySchedule();
+    renderAttendanceBoard();
+    renderLessonLogs();
+    renderStudentProgress();
+    renderFinance();
+  } else {
+    openLessonLogModal({ ...session, teacher });
+  }
+}
+
+function clearCompletedSession(session) {
+  const sessionKey = getSessionKey(session);
+  if (!data.completedSessions[sessionKey]) return false;
+
+  delete data.completedSessions[sessionKey];
+  deleteFinanceSessionSnapshot(sessionKey);
+  removeSessionAttendance(session);
+  removeLessonLog(sessionKey);
+  normalizeData();
+  return true;
+}
+
+function openLessonLogModal(session) {
+  pendingLessonLogSession = {
+    ...session,
+    date: parseDateValue(formatDateValue(session.date))
+  };
+  const existingLog = getLessonLogBySessionKey(getSessionKey(pendingLessonLogSession));
+  const students = getStudentsByClass(session.className);
+
+  lessonLogModal.classList.add("open");
+  lessonLogModal.setAttribute("aria-hidden", "false");
+  lessonLogModalTitle.textContent = `Lesson Log - ${session.className}`;
+  lessonLogSessionSummary.innerHTML = `
+    <strong>${session.className}</strong>
+    <span>${formatStoredDate(formatDateValue(session.date))} | ${session.startTime}-${session.endTime} | ${session.teacher}</span>
+  `;
+  lessonLogTaught.value = existingLog ? existingLog.taught : "";
+  lessonLogHomework.value = existingLog ? existingLog.homework : "";
+  lessonLogNote.value = existingLog ? existingLog.note : "";
+  lessonLogStudentNotes.innerHTML = "";
+
+  if (!students.length) {
+    const empty = document.createElement("p");
+    empty.className = "attendance-empty inline";
+    empty.textContent = "No active students in this class.";
+    lessonLogStudentNotes.append(empty);
+  }
+
+  students.forEach(({ student }) => {
+    const savedNote = existingLog
+      ? existingLog.studentNotes.find(note => normalizeSearchText(note.studentName) === normalizeSearchText(student.name))
+      : null;
+
+    lessonLogStudentNotes.append(createStudentLessonNoteRow(student, savedNote));
+  });
+
+  lessonLogTaught.focus();
+}
+
+function createStudentLessonNoteRow(student, savedNote) {
+  const row = document.createElement("div");
+  const name = document.createElement("strong");
+  const select = document.createElement("select");
+  const note = document.createElement("textarea");
+
+  row.className = "student-note-row";
+  row.dataset.studentName = student.name;
+  name.textContent = student.name;
+  select.className = "student-performance";
+  ["Excellent", "Good", "Improving", "Needs Practice", "Absent"].forEach(value => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    select.append(option);
+  });
+  select.value = savedNote ? savedNote.performance : "Good";
+  note.className = "student-note-input";
+  note.rows = 2;
+  note.placeholder = "Student note";
+  note.value = savedNote ? savedNote.note : "";
+
+  row.append(name, select, note);
+  return row;
+}
+
+function closeLessonLogModal() {
+  pendingLessonLogSession = null;
+  lessonLogModal.classList.remove("open");
+  lessonLogModal.setAttribute("aria-hidden", "true");
+  lessonLogForm.reset();
+  lessonLogStudentNotes.innerHTML = "";
+}
+
+function saveLessonLogAndCompleteSession() {
+  if (!pendingLessonLogSession) return;
+
+  const session = pendingLessonLogSession;
+  const sessionKey = getSessionKey(session);
+  const studentNotes = [...lessonLogStudentNotes.querySelectorAll(".student-note-row")].map(row => ({
+    studentName: row.dataset.studentName,
+    performance: row.querySelector(".student-performance").value,
+    note: row.querySelector(".student-note-input").value.trim()
+  }));
+  const existingLog = getLessonLogBySessionKey(sessionKey);
+  const now = new Date().toISOString();
+  const log = {
+    sessionKey,
+    date: formatDateValue(session.date),
+    className: session.className,
+    day: session.day,
+    startTime: session.startTime,
+    endTime: session.endTime,
+    teacher: session.teacher,
+    taught: lessonLogTaught.value.trim(),
+    homework: lessonLogHomework.value.trim(),
+    note: lessonLogNote.value.trim(),
+    studentNotes,
+    createdAt: existingLog ? existingLog.createdAt : now,
+    updatedAt: now
+  };
+
+  upsertLessonLog(log);
+  data.completedSessions[sessionKey] = true;
+  completeSessionAttendance(session);
+  normalizeData();
+  saveData(true);
+  closeLessonLogModal();
+  renderStudents();
+  renderWeeklySchedule();
+  renderAttendanceBoard();
+  renderLessonLogs();
+  renderStudentProgress();
+  renderFinance();
+}
+
+function upsertLessonLog(log) {
+  const index = data.lessonLogs.findIndex(existingLog => existingLog.sessionKey === log.sessionKey);
+  if (index >= 0) {
+    data.lessonLogs[index] = log;
+  } else {
+    data.lessonLogs.push(log);
+  }
+}
+
+function getLessonLogBySessionKey(sessionKey) {
+  return data.lessonLogs.find(log => log.sessionKey === sessionKey);
+}
+
+function removeLessonLog(sessionKey) {
+  data.lessonLogs = data.lessonLogs.filter(log => log.sessionKey !== sessionKey);
+}
+
+function completeSessionAttendance(session) {
+  const students = getStudentsByClass(session.className);
+  setFinanceSessionStudentSnapshot(session, students.map(({ student }) => student));
+
+  students.forEach(({ student, index }) => {
+    const existingKey = findSessionAttendanceKey(session, student);
+    if (existingKey) return;
+
+    const lessonIndex = getNextLessonIndex(student);
+    const cycleIndex = getNextLessonCycleIndex(student);
+    data.attendance[getAttendanceKey(session, student, lessonIndex, cycleIndex)] = true;
+    data.students[index].lessonsDone = Math.max(0, Number(data.students[index].lessonsDone || 0)) + 1;
+  });
+}
+
+function removeSessionAttendance(session) {
+  getStudentsByClass(session.className).forEach(({ student, index }) => {
+    const existingKey = findSessionAttendanceKey(session, student);
+    if (!existingKey) return;
+
+    delete data.attendance[existingKey];
+    data.students[index].lessonsDone = Math.max(0, Number(data.students[index].lessonsDone || 0) - 1);
+  });
+}
+
+function findSessionAttendanceKey(session, student) {
+  const prefix = getSessionAttendancePrefix(session, student);
+  return Object.keys(data.attendance).find(key => key.startsWith(prefix));
+}
+
+function getSessionAttendancePrefix(session, student) {
+  return [formatDateValue(session.date), session.className, session.startTime, session.endTime, student.name].join("|") + "|";
+}
+
+function getNextLessonIndex(student) {
+  const totalLessons = getStudentCycleLessons(student);
+  return Math.max(0, Number(student.lessonsDone) || 0) % totalLessons;
+}
+
+function getNextLessonCycleIndex(student) {
+  const totalLessons = getStudentCycleLessons(student);
+  return Math.floor(Math.max(0, Number(student.lessonsDone) || 0) / totalLessons);
+}
+
+function getSessionKey(session) {
+  return [formatDateValue(session.date), session.className, session.startTime, session.endTime].join("|");
+}
+
+function isTeachingTeacher(teacher) {
+  const cleanTeacher = String(teacher || "").trim().toLowerCase();
+  return cleanTeacher !== "" && cleanTeacher !== "off";
+}
+
+function renderAttendanceBoard() {
+  attendanceBoard.innerHTML = "";
+  const sessions = getAttendanceSessions();
+  const sessionGroups = getFilteredAttendanceGroups(groupAttendanceSessionsByClass(sessions));
+
+  if (!sessionGroups.length) {
+    const empty = document.createElement("div");
+    empty.className = "attendance-empty";
+    empty.textContent = attendanceClassFilter.value
+      ? "No attendance sheet for this class this week."
+      : "Add teacher names in Schedule to create attendance sheets for this week.";
+    attendanceBoard.append(empty);
+    return;
+  }
+
+  let currentGroup = "";
+
+  sessionGroups.forEach(group => {
+    const groupLabel = getClassCategoryLabel(group.className);
+    if (groupLabel !== currentGroup) {
+      const heading = document.createElement("h3");
+      heading.className = "attendance-group-heading";
+      heading.textContent = groupLabel;
+      attendanceBoard.append(heading);
+      currentGroup = groupLabel;
+    }
+
+    const session = getClassAttendanceSession(group);
+    const card = document.createElement("article");
+    const header = document.createElement("div");
+    const headerText = document.createElement("div");
+    const classTitle = document.createElement("strong");
+    const sessionText = document.createElement("span");
+    const roster = document.createElement("div");
+    const students = getAttendanceStudentsByClass(session.className);
+
+    card.className = "attendance-card";
+    header.className = "attendance-card-header";
+    headerText.className = "attendance-card-title";
+    classTitle.textContent = session.className;
+    sessionText.textContent = formatAttendanceGroupSchedule(group);
+    headerText.append(classTitle, sessionText);
+    header.append(headerText);
+    roster.className = "attendance-roster";
+
+    if (!students.length) {
+      const emptyClass = document.createElement("p");
+      emptyClass.className = "attendance-empty inline";
+      emptyClass.textContent = "No students in this class.";
+      roster.append(emptyClass);
+    }
+
+    students.forEach(({ student, index }) => {
+      roster.append(createAttendanceRow(student, session, index));
+    });
+
+    card.append(header, roster);
+    attendanceBoard.append(card);
+  });
+}
+
+function groupAttendanceSessionsByClass(sessions) {
+  const groups = new Map();
+
+  sessions.forEach(session => {
+    const key = session.className.trim();
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        className: session.className,
+        sessions: []
+      });
+    }
+
+    groups.get(key).sessions.push(session);
+  });
+
+  return [...groups.values()];
+}
+
+function getClassAttendanceSession(group) {
+  const firstSession = group.sessions[0];
+
+  return {
+    ...firstSession,
+    date: selectedWeekStart,
+    startTime: "",
+    endTime: "",
+    teacher: group.sessions.map(session => session.teacher).filter(Boolean).join(", ")
+  };
+}
+
+function formatAttendanceGroupSchedule(group) {
+  return getLatestAttendanceSessions(group.sessions, 2)
+    .map(session => `${session.dayLabel.slice(0, 3)} ${formatShortDate(session.date)} | ${session.startTime}-${session.endTime} | ${session.teacher}`)
+    .join("  /  ");
+}
+
+function getLatestAttendanceSessions(sessions, limit) {
+  return [...sessions]
+    .sort((first, second) => {
+      const firstTime = first.date.getTime() + timeToMinutes(first.startTime);
+      const secondTime = second.date.getTime() + timeToMinutes(second.startTime);
+      return secondTime - firstTime;
+    })
+    .slice(0, limit);
+}
+
+function createAttendanceRow(student, session, studentIndex) {
+  const row = document.createElement("div");
+  const nameBlock = document.createElement("div");
+  const name = document.createElement("strong");
+  const meta = document.createElement("span");
+  const actions = document.createElement("div");
+  const editButton = document.createElement("button");
+  const exportButton = document.createElement("button");
+  const rowKey = getAttendanceRowKey(session, studentIndex);
+  const isEditing = editingAttendanceRows.has(rowKey);
+  const selectedCycleIndex = getSelectedAttendanceCycle(rowKey, student);
+  const progress = createAttendanceProgress(student, session, isEditing, selectedCycleIndex);
+  const cycleTabs = createAttendanceCycleTabs(rowKey, student, selectedCycleIndex);
+  const noteBlock = createAttendanceNoteField(student, selectedCycleIndex, isEditing);
+
+  row.className = student.status === "Temporary pause" ? "attendance-row paused-student" : "attendance-row";
+  row.dataset.attendanceRowKey = rowKey;
+  nameBlock.className = "attendance-student";
+  actions.className = "attendance-actions";
+  name.textContent = student.name;
+  meta.textContent = student.status === "Temporary pause"
+    ? `Temporary pause | ${getAttendanceCycleRangeText(student, session, selectedCycleIndex)}`
+    : getAttendanceCycleRangeText(student, session, selectedCycleIndex);
+  editButton.type = "button";
+  editButton.className = isEditing ? "save-attendance-button" : "edit-attendance-button";
+  editButton.textContent = isEditing ? "Save" : "Edit";
+  editButton.addEventListener("click", () => {
+    if (isEditing) {
+      saveAttendanceEdit(row, student, studentIndex, session, rowKey);
+    } else {
+      editingAttendanceRows.add(rowKey);
+      renderAttendanceBoard();
+    }
+  });
+  exportButton.type = "button";
+  exportButton.className = "export-attendance-button";
+  exportButton.textContent = "Export CSV";
+  exportButton.addEventListener("click", () => exportStudentAttendanceCsv(student));
+
+  nameBlock.append(name, cycleTabs, meta);
+  actions.append(editButton, exportButton);
+  row.append(nameBlock, progress, noteBlock, actions);
+  return row;
+}
+
+function createAttendanceNoteField(student, cycleIndex, isEditing) {
+  const wrapper = document.createElement("label");
+  const label = document.createElement("span");
+  const textarea = document.createElement("textarea");
+  const note = getAttendanceCycleNote(student, cycleIndex);
+
+  wrapper.className = "attendance-note-field";
+  label.textContent = "Note";
+  textarea.className = "attendance-note-input";
+  textarea.value = note;
+  textarea.placeholder = "Make-up class, schedule change, payment note...";
+  textarea.rows = 2;
+  textarea.readOnly = !isEditing;
+
+  if (!isEditing && !note) {
+    textarea.placeholder = "No note";
+  }
+
+  wrapper.append(label, textarea);
+  return wrapper;
+}
+
+function createAttendanceProgress(student, session, isEditing, selectedCycleIndex) {
+  const totalLessons = getStudentCycleLessons(student);
+  const completedLessons = getCompletedLessonsInCurrentCycle(student, totalLessons);
+  const cycleIndex = getCurrentCycleIndex(student, totalLessons);
+  const wrapper = document.createElement("div");
+
+  wrapper.className = `attendance-progress ${totalLessons === 24 ? "course-attendance" : "monthly-attendance"}`;
+  wrapper.dataset.preserveDoneCount = completedLessons;
+
+  for (let index = 0; index < totalLessons; index += 1) {
+    const button = document.createElement("button");
+    const dateValue = getAttendanceDateValue(session, student, index, selectedCycleIndex);
+    const checked = selectedCycleIndex === cycleIndex
+      ? index < completedLessons || Boolean(dateValue)
+      : Boolean(dateValue);
+    const dateLabel = dateValue ? formatShortDate(parseDateValue(dateValue)) : "";
+
+    button.type = "button";
+    button.className = checked ? "attendance-dot checked" : "attendance-dot";
+    button.dataset.lessonIndex = index;
+    button.dataset.date = dateValue;
+    button.setAttribute("aria-label", `Lesson ${index + 1}`);
+    if (dateLabel) {
+      button.textContent = dateLabel;
+      button.title = `Lesson ${index + 1}: ${dateLabel}`;
+    }
+    button.disabled = !isEditing;
+    if (isEditing) {
+      button.classList.add("editable");
+      button.addEventListener("click", () => editAttendanceCell(button, index));
+    }
+    wrapper.append(button);
+  }
+
+  const cycle = document.createElement("span");
+  cycle.className = "attendance-cycle";
+  cycle.textContent = getCycleLetter(selectedCycleIndex);
+  wrapper.append(cycle);
+  return wrapper;
+}
+
+function createAttendanceCycleTabs(rowKey, student, selectedCycleIndex) {
+  const tabs = document.createElement("div");
+  const totalLessons = getStudentCycleLessons(student);
+  const hasManualCycleView = attendanceCycleViews.has(rowKey);
+  const maxCycleCount = getAttendanceCycleCount(student);
+
+  tabs.className = "attendance-cycle-tabs";
+
+  const currentButton = createAttendanceCycleButton("Current", !hasManualCycleView, () => {
+    attendanceCycleViews.delete(rowKey);
+    renderAttendanceBoard();
+  });
+  tabs.append(currentButton);
+
+  for (let cycleIndex = 0; cycleIndex < maxCycleCount; cycleIndex += 1) {
+    const button = createAttendanceCycleButton(getCycleLetter(cycleIndex), hasManualCycleView && selectedCycleIndex === cycleIndex, () => {
+      attendanceCycleViews.set(rowKey, cycleIndex);
+      renderAttendanceBoard();
+    });
+    tabs.append(button);
+  }
+
+  return tabs;
+}
+
+function createAttendanceCycleButton(label, isActive, onClick) {
+  const button = document.createElement("button");
+
+  button.type = "button";
+  button.className = isActive ? "cycle-tab active" : "cycle-tab";
+  button.textContent = label;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function getSelectedAttendanceCycle(rowKey, student) {
+  if (attendanceCycleViews.has(rowKey)) return attendanceCycleViews.get(rowKey);
+  return getCurrentCycleIndex(student, getStudentCycleLessons(student));
+}
+
+function getAttendanceRowKey(session, studentIndex) {
+  return [session.className, studentIndex].join("|");
+}
+
+function getAttendanceNoteKey(student, cycleIndex) {
+  return [student.className, student.name, Number(cycleIndex) || 0].join("|");
+}
+
+function getAttendanceCycleNote(student, cycleIndex) {
+  return data.attendanceNotes?.[getAttendanceNoteKey(student, cycleIndex)] || "";
+}
+
+function saveAttendanceCycleNote(student, cycleIndex, note) {
+  const key = getAttendanceNoteKey(student, cycleIndex);
+  const cleanNote = repairVietnameseText(String(note || "").trim());
+
+  data.attendanceNotes = data.attendanceNotes && typeof data.attendanceNotes === "object" ? data.attendanceNotes : {};
+  if (cleanNote) {
+    data.attendanceNotes[key] = cleanNote;
+  } else {
+    delete data.attendanceNotes[key];
+  }
+}
+
+function getAttendanceCycleRangeText(student, session, cycleIndex) {
+  const totalLessons = getStudentCycleLessons(student);
+  const currentCycleIndex = getCurrentCycleIndex(student, totalLessons);
+  const completedLessons = cycleIndex === currentCycleIndex
+    ? getCompletedLessonsInCurrentCycle(student, totalLessons)
+    : getAttendanceCycleDateCount(student, cycleIndex);
+  const startDate = getAttendanceCycleStartDate(student, session, cycleIndex);
+  const endDate = completedLessons === totalLessons
+    ? getAttendanceDateLabel(session, student, totalLessons - 1, cycleIndex) || "..."
+    : "...";
+  const paymentStatus = getCyclePaymentStatus(student, cycleIndex);
+
+  return `${getCycleLetter(cycleIndex)}: ${completedLessons}/${totalLessons} | ${paymentStatus} | ${startDate || "..."} - ${endDate}`;
+}
+
+function getAttendanceCycleStartDate(student, session, cycleIndex) {
+  const paymentRecord = getPaymentRecordForCycle(student, cycleIndex);
+  if (paymentRecord?.date) return formatStoredDate(paymentRecord.date);
+
+  const firstLessonDate = getAttendanceDateLabel(session, student, 0, cycleIndex);
+  if (firstLessonDate) return firstLessonDate;
+
+  const currentCycleIndex = getCurrentCycleIndex(student, getStudentCycleLessons(student));
+  if (cycleIndex === currentCycleIndex) return formatStoredDate(student.lastPaymentDate);
+
+  return "";
+}
+
+function getAttendanceCycleCount(student) {
+  const totalLessons = getStudentCycleLessons(student);
+  return Math.max(
+    getCurrentCycleIndex(student, totalLessons) + 1,
+    getPaidCycleCount(student),
+    1
+  );
+}
+
+function getPaidCycleCount(student) {
+  const history = normalizePaymentHistory(student.paymentHistory);
+  if (history.length) {
+    return Math.max(...history.map(record => record.cycleIndex)) + 1;
+  }
+  return Math.ceil(getStudentPaidLessons(student) / getStudentCycleLessons(student));
+}
+
+function getCyclePaymentStatus(student, cycleIndex) {
+  const record = getPaymentRecordForCycle(student, cycleIndex);
+  if (record) return `Paid ${formatStoredDate(record.date)}`;
+  return cycleIndex < getPaidCycleCount(student) ? "Paid" : "Pending payment";
+}
+
+function getPaymentRecordForCycle(student, cycleIndex) {
+  return normalizePaymentHistory(student.paymentHistory)
+    .find(record => Number(record.cycleIndex) === Number(cycleIndex));
+}
+
+function getAttendanceCycleDateCount(student, cycleIndex) {
+  const totalLessons = getStudentCycleLessons(student);
+  let count = 0;
+
+  for (let lessonIndex = 0; lessonIndex < totalLessons; lessonIndex += 1) {
+    if (getAttendanceDateValue(null, student, lessonIndex, cycleIndex)) count += 1;
+  }
+
+  return count;
+}
+
+function getCompletedLessonsInCurrentCycle(student, totalLessons) {
+  const lessonsDone = Math.max(0, Number(student.lessonsDone) || 0);
+  if (!lessonsDone) return 0;
+
+  const completedLessons = lessonsDone % totalLessons;
+  return completedLessons === 0 ? totalLessons : completedLessons;
+}
+
+function getCurrentCycleIndex(student, totalLessons) {
+  const lessonsDone = Math.max(0, Number(student.lessonsDone) || 0);
+  if (!lessonsDone) return 0;
+
+  return Math.floor((lessonsDone - 1) / totalLessons);
+}
+
+function toggleAttendanceDot(attendanceKey) {
+  if (data.attendance[attendanceKey]) {
+    delete data.attendance[attendanceKey];
+  } else {
+    data.attendance[attendanceKey] = true;
+  }
+
+  saveData(false);
+  renderAttendanceBoard();
+  renderFinance();
+}
+
+function editAttendanceCell(button, lessonIndex) {
+  editingAttendanceCell = {
+    button,
+    lessonIndex
+  };
+  attendanceDateInput.value = button.dataset.date || "";
+  attendanceDateModal.classList.add("open");
+  attendanceDateModal.setAttribute("aria-hidden", "false");
+  attendanceDateInput.focus();
+  if (typeof attendanceDateInput.showPicker === "function") {
+    attendanceDateInput.showPicker();
+  }
+}
+
+function setAttendanceCellDate(button, lessonIndex, dateValue) {
+  const normalizedDate = normalizeDateInput(dateValue);
+  if (!normalizedDate) return;
+
+  button.dataset.date = normalizedDate;
+  button.textContent = formatShortDate(parseDateValue(normalizedDate));
+  button.title = `Lesson ${lessonIndex + 1}: ${button.textContent}`;
+  button.classList.add("checked");
+}
+
+function clearAttendanceCellDate(button, lessonIndex) {
+  button.dataset.date = "";
+  button.textContent = "";
+  button.title = `Lesson ${lessonIndex + 1}`;
+  button.classList.remove("checked");
+}
+
+function applyAttendanceDateFromModal() {
+  if (!editingAttendanceCell) return;
+
+  setAttendanceCellDate(editingAttendanceCell.button, editingAttendanceCell.lessonIndex, attendanceDateInput.value);
+  closeAttendanceDateModal();
+}
+
+function clearAttendanceDateFromModal() {
+  if (!editingAttendanceCell) return;
+
+  clearAttendanceCellDate(editingAttendanceCell.button, editingAttendanceCell.lessonIndex);
+  closeAttendanceDateModal();
+}
+
+function closeAttendanceDateModal() {
+  attendanceDateModal.classList.remove("open");
+  attendanceDateModal.setAttribute("aria-hidden", "true");
+  editingAttendanceCell = null;
+}
+
+function saveAttendanceEdit(row, student, studentIndex, session, rowKey) {
+  const totalLessons = getStudentCycleLessons(student);
+  const cycleIndex = getSelectedAttendanceCycle(rowKey, student);
+  const currentCycleIndex = getCurrentCycleIndex(student, totalLessons);
+  const noteInput = row.querySelector(".attendance-note-input");
+  let datedLessons = 0;
+
+  row.querySelectorAll(".attendance-dot").forEach(button => {
+    const lessonIndex = Number(button.dataset.lessonIndex);
+    const dateValue = button.dataset.date || "";
+
+    removeAttendanceLessonDate(student, lessonIndex, cycleIndex);
+
+    if (!dateValue) return;
+
+    const attendanceSession = {
+      ...session,
+      date: parseDateValue(dateValue)
+    };
+
+    data.attendance[getAttendanceKey(attendanceSession, student, lessonIndex, cycleIndex)] = true;
+    datedLessons += 1;
+  });
+
+  if (cycleIndex === currentCycleIndex) {
+    data.students[studentIndex].lessonsDone = cycleIndex * totalLessons + datedLessons;
+  }
+
+  saveAttendanceCycleNote(student, cycleIndex, noteInput?.value || "");
+  editingAttendanceRows.delete(rowKey);
+  saveData(true);
+  renderStudents();
+  renderAttendanceBoard();
+  renderFinance();
+}
+
+function removeAttendanceLessonDate(student, lessonIndex, cycleIndex) {
+  Object.keys(data.attendance).forEach(key => {
+    if (isAttendanceKeyForStudentLesson(key, student, lessonIndex, cycleIndex)) delete data.attendance[key];
+  });
+}
+
+function getAttendanceDateLabel(session, student, lessonIndex, cycleIndex = getCurrentCycleIndex(student, getStudentCycleLessons(student))) {
+  const dateValue = getAttendanceDateValue(session, student, lessonIndex, cycleIndex);
+  return dateValue ? formatShortDate(parseDateValue(dateValue)) : "";
+}
+
+function getAttendanceDateValue(session, student, lessonIndex, cycleIndex = getCurrentCycleIndex(student, getStudentCycleLessons(student))) {
+  if (session) {
+    const exactKey = getAttendanceKey(session, student, lessonIndex, cycleIndex);
+    if (data.attendance[exactKey]) return formatDateValue(session.date);
+
+    const legacyExactKey = getLegacyAttendanceKey(session, student, lessonIndex);
+    if (data.attendance[legacyExactKey]) return formatDateValue(session.date);
+  }
+
+  const matchingKey = Object.keys(data.attendance)
+    .find(key => isAttendanceKeyForStudentLesson(key, student, lessonIndex, cycleIndex))
+    || Object.keys(data.attendance)
+      .find(key => isAttendanceKeyForStudentLessonAnyClass(key, student, lessonIndex, cycleIndex));
+  if (!matchingKey) return "";
+
+  const [dateValue] = matchingKey.split("|");
+  return dateValue;
+}
+
+function isAttendanceKeyForStudentLesson(key, student, lessonIndex, cycleIndex) {
+  const parts = key.split("|");
+  if (parts.length < 6) return false;
+
+  const keyClassName = parts[1] || "";
+  const keyStudentName = parts[4] || "";
+  const keyCycleIndex = parts.length >= 7 ? Number(parts[5]) : 0;
+  const keyLessonIndex = Number(parts.length >= 7 ? parts[6] : parts[5]);
+
+  return normalizeSearchText(keyClassName) === normalizeSearchText(student.className)
+    && normalizeSearchText(keyStudentName) === normalizeSearchText(student.name)
+    && keyCycleIndex === Number(cycleIndex)
+    && keyLessonIndex === Number(lessonIndex);
+}
+
+function isAttendanceKeyForStudentLessonAnyClass(key, student, lessonIndex, cycleIndex) {
+  const parts = key.split("|");
+  if (parts.length < 6) return false;
+
+  const keyStudentName = parts[4] || "";
+  const keyCycleIndex = parts.length >= 7 ? Number(parts[5]) : 0;
+  const keyLessonIndex = Number(parts.length >= 7 ? parts[6] : parts[5]);
+
+  return normalizeSearchText(keyStudentName) === normalizeSearchText(student.name)
+    && keyCycleIndex === Number(cycleIndex)
+    && keyLessonIndex === Number(lessonIndex);
+}
+
+function exportStudentAttendanceCsv(student) {
+  const totalLessons = getStudentCycleLessons(student);
+  const cycleCount = getAttendanceCycleCount(student);
+  const rows = [
+    ["Student Name", student.name],
+    ["Class", student.className],
+    ["Payment Type", formatPaymentType(student)],
+    ["Lessons Done", student.lessonsDone],
+    ["Total Lessons", totalLessons],
+    ["Paid Lessons", getStudentPaidLessons(student)],
+    [],
+    ["Cycle", "Payment", "Lesson", "Date", "Status"]
+  ];
+
+  for (let cycleIndex = 0; cycleIndex < cycleCount; cycleIndex += 1) {
+    for (let lessonIndex = 0; lessonIndex < totalLessons; lessonIndex += 1) {
+      const dateValue = getAttendanceDateValue(null, student, lessonIndex, cycleIndex);
+      rows.push([
+        getCycleLetter(cycleIndex),
+        getCyclePaymentStatus(student, cycleIndex),
+        lessonIndex + 1,
+        dateValue || "",
+        dateValue ? "Done" : ""
+      ]);
+    }
+  }
+
+  downloadCsv(
+    rows,
+    `mandy-english-attendance-${slugifyFileName(student.name)}-${slugifyFileName(student.className)}.csv`
+  );
+}
+
+function downloadCsv(rows, fileName) {
+  const csv = rows.map(row => row.map(csvEscape).join(",")).join("\r\n");
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function slugifyFileName(value) {
+  const slug = normalizeSearchText(value).replace(/\s+/g, "-");
+  return slug || "student";
+}
+
+function getAttendanceSessions() {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const dayLabels = {
+    Mon: "Monday",
+    Tue: "Tuesday",
+    Wed: "Wednesday",
+    Thu: "Thursday",
+    Fri: "Friday",
+    Sat: "Saturday",
+    Sun: "Sunday"
+  };
+  const weekDates = getSelectedWeekDates();
+
+  return days.flatMap((day, dayIndex) => getClassesForDay(day).map(classSlot => {
+    const date = weekDates[dayIndex];
+    const teacherKey = getTeacherKey(day, classSlot, date);
+    const legacyTeacherKey = getLegacyTeacherKey(day, classSlot);
+    const teacher = data.teachers[teacherKey] || getCurrentWeekLegacyTeacher(legacyTeacherKey);
+
+    return {
+      ...classSlot,
+      date,
+      day,
+      dayLabel: dayLabels[day],
+      teacher
+    };
+  })).filter(session => {
+    const teacher = String(session.teacher || "").trim().toLowerCase();
+    return teacher && teacher !== "off";
+  });
+}
+
+function getStudentsByClass(className) {
+  return data.students
+    .map((student, index) => ({ student, index }))
+    .filter(({ student }) => student.className.trim() === className.trim() && student.status === "Active");
+}
+
+function getAttendanceStudentsByClass(className) {
+  return data.students
+    .map((student, index) => ({ student, index }))
+    .filter(({ student }) => {
+      const sameClass = student.className.trim() === className.trim();
+      const visibleStatus = student.status === "Active" || student.status === "Temporary pause";
+      return sameClass && visibleStatus;
+    });
+}
+
+function getPaidActiveStudentsByClass(className) {
+  return getStudentsByClass(className)
+    .filter(({ student }) => normalizePaymentType(student.paymentType) !== "Free");
+}
+
+function renderFinance() {
+  updateFinanceRangeFields();
+  renderFinanceClassFees();
+  renderFinanceProjection();
+  renderFinanceRevenue();
+}
+
+function renderFinanceClassFees() {
+  financeClassFeeRows.innerHTML = "";
+  const entries = getSortedClassEntries(data.classes.map((classItem, index) => ({ classItem, index })));
+
+  if (!entries.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.className = "muted-cell";
+    cell.textContent = "No classes yet.";
+    row.append(cell);
+    financeClassFeeRows.append(row);
+    return;
+  }
+
+  entries.forEach(({ classItem }) => {
+    const row = document.createElement("tr");
+    const paidStudents = getPaidActiveStudentsByClass(classItem.name);
+    const fee = getClassFeePerLesson(classItem.name);
+
+    row.append(createPlainCell(classItem.name, "readonly-cell"));
+    row.append(createPlainCell(paidStudents.length, "plain-cell finance-number-cell"));
+    row.append(createFinanceFeeInputCell(classItem.name, fee));
+    row.append(createPlainCell(formatCurrency(paidStudents.length * fee), "plain-cell finance-money-cell"));
+    financeClassFeeRows.append(row);
+  });
+}
+
+function renderFinanceProjection() {
+  const range = getFinanceDateRange();
+  const rows = getFinanceProjectionRows(range);
+  const total = rows.reduce((sum, row) => sum + row.revenue, 0);
+
+  financeProjectedLabel.textContent = `${range.label} Scheduled Revenue`;
+  financeProjectedTitle.textContent = `${range.label} Scheduled Revenue Estimate`;
+  financeProjectedRevenue.textContent = formatCurrency(total);
+  financeProjectedRows.innerHTML = "";
+
+  if (!rows.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 6;
+    cell.className = "muted-cell";
+    cell.textContent = "No scheduled lessons for this period.";
+    row.append(cell);
+    financeProjectedRows.append(row);
+    return;
+  }
+
+  rows.forEach(item => {
+    const row = document.createElement("tr");
+    row.append(createPlainCell(formatStoredDate(item.dateValue), "plain-cell"));
+    row.append(createPlainCell(item.className, "plain-cell"));
+    row.append(createPlainCell(`${item.startTime}-${item.endTime}`, "plain-cell"));
+    row.append(createPlainCell(item.teacher || "-", "plain-cell muted-cell"));
+    row.append(createFinanceProjectedStudentsCell(item.paidStudents));
+    row.append(createPlainCell(item.feePerLesson ? formatCurrency(item.revenue) : "Missing fee", item.feePerLesson ? "plain-cell finance-money-cell" : "plain-cell reminder-due"));
+    financeProjectedRows.append(row);
+  });
+}
+
+function createFinanceProjectedStudentsCell(students) {
+  const cell = createPlainCell(students.length, "plain-cell finance-number-cell");
+  const names = students.map(student => student.name).filter(Boolean).join(", ");
+  if (names) cell.title = names;
+  return cell;
+}
+
+function getFinanceProjectionRows(range) {
+  const rows = [];
+
+  getDateValuesInRange(range.start, range.end).forEach(dateValue => {
+    const date = parseDateValue(dateValue);
+    const day = getDayCodeFromDate(date);
+    const weekStart = getWeekStart(date);
+
+    getClassesForDayForWeek(day, weekStart).forEach(classSlot => {
+      const teacherKey = getTeacherKey(day, classSlot, date);
+      const legacyTeacherKey = getLegacyTeacherKey(day, classSlot);
+      const teacher = data.teachers[teacherKey] || getLegacyTeacherForWeek(legacyTeacherKey, weekStart);
+      if (isOffTeacher(teacher)) return;
+
+      const paidStudents = getPaidActiveStudentsByClass(classSlot.className).map(({ student }) => student);
+      const feePerLesson = getClassFeePerLesson(classSlot.className);
+
+      rows.push({
+        dateValue,
+        className: classSlot.className,
+        startTime: classSlot.startTime,
+        endTime: classSlot.endTime,
+        teacher,
+        paidStudents,
+        feePerLesson,
+        revenue: paidStudents.length * feePerLesson
+      });
+    });
+  });
+
+  return rows.sort((first, second) => `${first.dateValue} ${first.startTime} ${first.className}`.localeCompare(`${second.dateValue} ${second.startTime} ${second.className}`));
+}
+
+function getDateValuesInRange(startValue, endValue) {
+  const dates = [];
+  let cursor = parseDateValue(startValue);
+  const endDate = parseDateValue(endValue);
+
+  while (cursor <= endDate) {
+    dates.push(formatDateValue(cursor));
+    cursor = addDays(cursor, 1);
+  }
+
+  return dates;
+}
+
+function setFinanceSessionStudentSnapshot(session, students) {
+  const sessionKey = getSessionKey(session);
+  data.finance = data.finance && typeof data.finance === "object" ? data.finance : {};
+  data.finance.sessionStudents = data.finance.sessionStudents && typeof data.finance.sessionStudents === "object" ? data.finance.sessionStudents : {};
+  data.finance.sessionStudents[sessionKey] = students.map(student => ({
+    name: student.name,
+    paymentType: normalizePaymentType(student.paymentType)
+  }));
+}
+
+function deleteFinanceSessionSnapshot(sessionKey) {
+  if (data.finance?.sessionStudents) delete data.finance.sessionStudents[sessionKey];
+}
+
+function createFinanceFeeInputCell(className, value) {
+  const cell = document.createElement("td");
+  const input = document.createElement("input");
+
+  input.type = "text";
+  input.inputMode = "numeric";
+  input.value = value ? formatMoneyInput(value) : "";
+  input.placeholder = "Example: 200000";
+  input.addEventListener("change", event => {
+    setClassFeePerLesson(className, event.target.value);
+    saveData(false);
+    renderFinance();
+  });
+
+  cell.append(input);
+  return cell;
+}
+
+function renderFinanceRevenue() {
+  const range = getFinanceDateRange();
+  const rows = getFinanceRevenueRows(range);
+  const totals = rows.reduce((summary, row) => {
+    summary.revenue += row.revenue;
+    summary.cost += row.cost;
+    return summary;
+  }, { revenue: 0, cost: 0 });
+
+  financeRevenueLabel.textContent = `${range.label} Revenue`;
+  financeCostLabel.textContent = `${range.label} Cost`;
+  financeDetailTitle.textContent = `${range.label} Revenue Detail`;
+  financeDailyRevenue.textContent = formatCurrency(totals.revenue);
+  financeDailyCost.textContent = formatCurrency(totals.cost);
+  financeNetProfit.textContent = formatCurrency(totals.revenue - totals.cost);
+  financeCompletedLessons.textContent = rows.length;
+  financeRevenueRows.innerHTML = "";
+
+  if (!rows.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 8;
+    cell.className = "muted-cell";
+    cell.textContent = "No Done lessons for this period.";
+    row.append(cell);
+    financeRevenueRows.append(row);
+    return;
+  }
+
+  rows.forEach(item => {
+    const row = document.createElement("tr");
+    row.append(createPlainCell(formatStoredDate(item.dateValue), "plain-cell"));
+    row.append(createPlainCell(item.className, "plain-cell"));
+    row.append(createPlainCell(`${item.startTime}-${item.endTime}`, "plain-cell"));
+    row.append(createPlainCell(item.teacher || "-", "plain-cell muted-cell"));
+    row.append(createFinancePaidStudentsCell(item.paidStudents));
+    row.append(createPlainCell(item.feePerLesson ? formatCurrency(item.revenue) : "Missing fee", item.feePerLesson ? "plain-cell finance-money-cell" : "plain-cell reminder-due"));
+    row.append(createFinanceCostInputCell(item));
+    row.append(createPlainCell(formatCurrency(item.revenue - item.cost), "plain-cell finance-money-cell"));
+    financeRevenueRows.append(row);
+  });
+}
+
+function createFinancePaidStudentsCell(records) {
+  const cell = createPlainCell(records.length, "plain-cell finance-number-cell");
+  const names = records.map(record => record.studentName).filter(Boolean).join(", ");
+  if (names) cell.title = names;
+  return cell;
+}
+
+function createFinanceCostInputCell(item) {
+  const cell = document.createElement("td");
+  const input = document.createElement("input");
+
+  input.type = "text";
+  input.inputMode = "numeric";
+  input.value = item.cost ? formatMoneyInput(item.cost) : "";
+  input.placeholder = "0";
+  input.addEventListener("change", event => {
+    setSessionCost(item.sessionKey, event.target.value);
+    saveData(false);
+    renderFinanceRevenue();
+  });
+
+  cell.append(input);
+  return cell;
+}
+
+function getFinanceRevenueRows(range) {
+  return getCompletedFinanceSessions()
+    .filter(session => session.dateValue >= range.start && session.dateValue <= range.end)
+    .map(session => {
+      const paidStudents = getFinancePaidAttendanceRecords(session);
+      const feePerLesson = getClassFeePerLesson(session.className);
+      const revenue = paidStudents.length * feePerLesson;
+      const cost = getSessionCost(session.sessionKey);
+
+      return {
+        ...session,
+        teacher: getFinanceTeacherName(session),
+        paidStudents,
+        feePerLesson,
+        revenue,
+        cost
+      };
+    })
+    .sort((first, second) => `${first.dateValue} ${first.startTime} ${first.className}`.localeCompare(`${second.dateValue} ${second.startTime} ${second.className}`));
+}
+
+function getFinancePaidAttendanceRecords(session) {
+  const records = getFinanceAttendanceRecordsForSession(session);
+  const snapshot = getFinanceSessionStudentSnapshot(session.sessionKey);
+  const uniqueByStudent = new Map();
+
+  records.forEach(record => {
+    const studentKey = normalizeSearchText(record.studentName);
+    if (!studentKey || uniqueByStudent.has(studentKey)) return;
+    if (isFreeAttendanceStudent(record.studentName, snapshot)) return;
+    uniqueByStudent.set(studentKey, record);
+  });
+
+  return [...uniqueByStudent.values()];
+}
+
+function getFinanceSessionStudentSnapshot(sessionKey) {
+  const snapshot = data.finance?.sessionStudents?.[sessionKey];
+  return Array.isArray(snapshot) ? snapshot : [];
+}
+
+function getFinanceAttendanceRecordsForSession(session) {
+  const exactRecords = [];
+  const legacyRecords = [];
+
+  Object.keys(data.attendance || {})
+    .map(parseAttendanceRecord)
+    .filter(Boolean)
+    .forEach(record => {
+      const sameDateAndClass = record.dateValue === session.dateValue
+        && normalizeSearchText(record.className) === normalizeSearchText(session.className);
+
+      if (!sameDateAndClass) return;
+
+      if (record.startTime === session.startTime && record.endTime === session.endTime) {
+        exactRecords.push(record);
+        return;
+      }
+
+      if (!record.startTime && !record.endTime) {
+        legacyRecords.push(record);
+      }
+    });
+
+  if (!legacyRecords.length) return exactRecords;
+
+  const exactStudentKeys = new Set(exactRecords.map(record => normalizeSearchText(record.studentName)));
+  return [
+    ...exactRecords,
+    ...legacyRecords.filter(record => !exactStudentKeys.has(normalizeSearchText(record.studentName)))
+  ];
+}
+
+function parseAttendanceRecord(key) {
+  const parts = key.split("|");
+  if (parts.length < 6) return null;
+
+  return {
+    key,
+    dateValue: parts[0] || "",
+    className: parts[1] || "",
+    startTime: parts[2] || "",
+    endTime: parts[3] || "",
+    studentName: parts[4] || "",
+    cycleIndex: parts.length >= 7 ? Number(parts[5]) : 0,
+    lessonIndex: Number(parts.length >= 7 ? parts[6] : parts[5])
+  };
+}
+
+function isFreeAttendanceStudent(studentName, sessionSnapshot = []) {
+  const snapshotStudent = sessionSnapshot.find(item => normalizeSearchText(item.name) === normalizeSearchText(studentName));
+  if (snapshotStudent) return normalizePaymentType(snapshotStudent.paymentType) === "Free";
+
+  const student = data.students.find(item => normalizeSearchText(item.name) === normalizeSearchText(studentName));
+  return student ? normalizePaymentType(student.paymentType) === "Free" : false;
+}
+
+function getCompletedFinanceSessions() {
+  return Object.entries(data.completedSessions || {})
+    .filter(([, isDone]) => Boolean(isDone))
+    .map(([sessionKey]) => {
+      const [dateValue = "", className = "", startTime = "", endTime = ""] = sessionKey.split("|");
+      if (!dateValue || !className) return null;
+      return { sessionKey, dateValue, className, startTime, endTime };
+    })
+    .filter(Boolean);
+}
+
+function getFinanceTeacherName(session) {
+  const date = parseDateValue(session.dateValue);
+  const day = getDayCodeFromDate(date);
+  const classSlot = {
+    className: session.className,
+    startTime: session.startTime,
+    endTime: session.endTime
+  };
+  return data.teachers[getTeacherKey(day, classSlot, date)] || data.teachers[getLegacyTeacherKey(day, classSlot)] || "";
+}
+
+function getDayCodeFromDate(date) {
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()] || "Mon";
+}
+
+function updateFinanceRangeFields() {
+  const isCustom = financeViewMode.value === "custom";
+  financeDate.closest("label").classList.toggle("hidden-field", isCustom);
+  financeStartField.classList.toggle("show", isCustom);
+  financeEndField.classList.toggle("show", isCustom);
+}
+
+function applyFinanceQuickRange(rangeName) {
+  const today = new Date();
+
+  if (rangeName === "today") {
+    setFinanceDay(today);
+    return;
+  }
+
+  if (rangeName === "yesterday") {
+    setFinanceDay(addDays(today, -1));
+    return;
+  }
+
+  if (rangeName === "this-week") {
+    const weekStart = getWeekStart(today);
+    setFinanceCustomRange(weekStart, addDays(weekStart, 6));
+    return;
+  }
+
+  if (rangeName === "last-week") {
+    const weekStart = addDays(getWeekStart(today), -7);
+    setFinanceCustomRange(weekStart, addDays(weekStart, 6));
+    return;
+  }
+
+  if (rangeName === "this-month") {
+    setFinanceCustomRange(getMonthStart(today), getMonthEnd(today));
+    return;
+  }
+
+  if (rangeName === "last-month") {
+    const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    setFinanceCustomRange(getMonthStart(lastMonthDate), getMonthEnd(lastMonthDate));
+  }
+}
+
+function setFinanceDay(date) {
+  financeViewMode.value = "day";
+  financeDate.value = formatDateValue(date);
+  updateFinanceRangeFields();
+  renderFinance();
+}
+
+function setFinanceCustomRange(startDate, endDate) {
+  financeViewMode.value = "custom";
+  financeStartDate.value = formatDateValue(startDate);
+  financeEndDate.value = formatDateValue(endDate);
+  updateFinanceRangeFields();
+  renderFinance();
+}
+
+function getMonthStart(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getMonthEnd(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+}
+
+function getFinanceDateRange() {
+  if (financeViewMode.value === "custom") {
+    const start = normalizeDateInput(financeStartDate.value) || formatDateValue(getWeekStart(new Date()));
+    const end = normalizeDateInput(financeEndDate.value) || start;
+    const orderedStart = start <= end ? start : end;
+    const orderedEnd = start <= end ? end : start;
+
+    return {
+      start: orderedStart,
+      end: orderedEnd,
+      label: `${formatStoredDate(orderedStart)} - ${formatStoredDate(orderedEnd)}`
+    };
+  }
+
+  const dateValue = normalizeDateInput(financeDate.value) || formatDateValue(new Date());
+  return {
+    start: dateValue,
+    end: dateValue,
+    label: formatStoredDate(dateValue)
+  };
+}
+
+function getClassFeePerLesson(className) {
+  return parseMoneyValue(data.finance?.classFees?.[getFinanceClassKey(className)]);
+}
+
+function setClassFeePerLesson(className, value) {
+  data.finance = data.finance && typeof data.finance === "object" ? data.finance : {};
+  data.finance.classFees = data.finance.classFees && typeof data.finance.classFees === "object" ? data.finance.classFees : {};
+  const key = getFinanceClassKey(className);
+  const amount = parseMoneyValue(value);
+
+  if (amount > 0) {
+    data.finance.classFees[key] = amount;
+  } else {
+    delete data.finance.classFees[key];
+  }
+}
+
+function getSessionCost(sessionKey) {
+  return parseMoneyValue(data.finance?.sessionCosts?.[sessionKey]);
+}
+
+function setSessionCost(sessionKey, value) {
+  data.finance = data.finance && typeof data.finance === "object" ? data.finance : {};
+  data.finance.sessionCosts = data.finance.sessionCosts && typeof data.finance.sessionCosts === "object" ? data.finance.sessionCosts : {};
+  const amount = parseMoneyValue(value);
+
+  if (amount > 0) {
+    data.finance.sessionCosts[sessionKey] = amount;
+  } else {
+    delete data.finance.sessionCosts[sessionKey];
+  }
+}
+
+function getFinanceClassKey(className) {
+  return String(className || "").trim();
+}
+
+function parseMoneyValue(value) {
+  const amount = Number(String(value || "").replace(/[^\d.-]/g, ""));
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+}
+
+function formatMoneyInput(value) {
+  return String(Math.round(parseMoneyValue(value)));
+}
+
+function formatCurrency(value) {
+  const amount = Math.round(Number(value) || 0);
+  return `${amount.toLocaleString("vi-VN")} VND`;
+}
+
+function getAttendanceKey(session, student, lessonIndex, cycleIndex = getCurrentCycleIndex(student, getStudentCycleLessons(student))) {
+  return [formatDateValue(session.date), session.className, session.startTime, session.endTime, student.name, cycleIndex, lessonIndex].join("|");
+}
+
+function getLegacyAttendanceKey(session, student, lessonIndex) {
+  return [formatDateValue(session.date), session.className, session.startTime, session.endTime, student.name, lessonIndex].join("|");
+}
+
+function getCycleLetter(index) {
+  return String.fromCharCode(65 + Math.max(0, index % 26));
+}
+
+function exportScheduleCsv() {
+  const rows = getScheduleCsvRows();
+  const csv = rows.map(row => row.map(csvEscape).join(",")).join("\r\n");
+  const weekDates = getSelectedWeekDates();
+  const fileName = `mandy-english-schedule-${formatDateValue(weekDates[0])}_to_${formatDateValue(weekDates[6])}.csv`;
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function getScheduleCsvRows() {
+  const headers = ["Week Start", "Week End", "Date", "Day", "Shift", "Class", "Start Time", "End Time", "Teacher", "Completed"];
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const dayLabels = {
+    Mon: "Monday",
+    Tue: "Tuesday",
+    Wed: "Wednesday",
+    Thu: "Thursday",
+    Fri: "Friday",
+    Sat: "Saturday",
+    Sun: "Sunday"
+  };
+  const weekDates = getSelectedWeekDates();
+  const weekStart = formatDateValue(weekDates[0]);
+  const weekEnd = formatDateValue(weekDates[6]);
+  const rows = [headers];
+
+  days.forEach((day, dayIndex) => {
+    const date = weekDates[dayIndex];
+    getClassesForDay(day).forEach(classSlot => {
+      const teacherKey = getTeacherKey(day, classSlot, date);
+      const legacyTeacherKey = getLegacyTeacherKey(day, classSlot);
+      const teacher = data.teachers[teacherKey] || getCurrentWeekLegacyTeacher(legacyTeacherKey);
+      const sessionKey = getSessionKey({ date, className: classSlot.className, startTime: classSlot.startTime, endTime: classSlot.endTime });
+
+      rows.push([
+        weekStart,
+        weekEnd,
+        formatDateValue(date),
+        dayLabels[day],
+        formatShiftName(classSlot.startTime),
+        classSlot.className,
+        classSlot.startTime,
+        classSlot.endTime,
+        teacher,
+        data.completedSessions[sessionKey] ? "Yes" : "No"
+      ]);
+    });
+  });
+
+  return rows;
+}
+
+function formatShiftName(startTime) {
+  const shiftKey = getShiftKey(startTime);
+  if (shiftKey === "morning") return "Morning";
+  if (shiftKey === "midday") return "Afternoon";
+  return "Evening";
+}
+
+function csvEscape(value) {
+  const text = String(value ?? "");
+  if (!/[",\r\n]/.test(text)) return text;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function renderWeeklySchedule() {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const shifts = [
+    { key: "morning", label: "Morning" },
+    { key: "midday", label: "Afternoon" },
+    { key: "evening", label: "Evening" }
+  ];
+  const dayLabels = {
+    Mon: "Monday",
+    Tue: "Tuesday",
+    Wed: "Wednesday",
+    Thu: "Thursday",
+    Fri: "Friday",
+    Sat: "Saturday",
+    Sun: "Sunday"
+  };
+  const weekDates = getSelectedWeekDates();
+
+  weeklySchedule.innerHTML = "";
+  weeklySchedule.className = "weekly-schedule schedule-matrix";
+
+  const emptyHeader = document.createElement("div");
+  emptyHeader.className = "schedule-corner";
+  weeklySchedule.append(emptyHeader);
+
+  days.forEach((day, index) => {
+    const header = document.createElement("div");
+    const label = document.createElement("strong");
+    const dateLabel = document.createElement("span");
+
+    header.className = "schedule-day-header";
+    label.textContent = dayLabels[day];
+    dateLabel.className = "day-date";
+    dateLabel.textContent = formatShortDate(weekDates[index]);
+    header.append(label, dateLabel);
+    weeklySchedule.append(header);
+  });
+
+  shifts.forEach(shift => {
+    const shiftHeader = document.createElement("div");
+    shiftHeader.className = "schedule-shift-header";
+    shiftHeader.innerHTML = `<strong>${shift.label}</strong>`;
+    weeklySchedule.append(shiftHeader);
+
+    days.forEach((day, dayIndex) => {
+      const cell = document.createElement("div");
+      const classesForDay = getClassesForDay(day);
+      const shiftClasses = classesForDay.filter(item => getShiftKey(item.startTime) === shift.key);
+
+      cell.className = "schedule-matrix-cell";
+
+      if (!shiftClasses.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty-day";
+        empty.textContent = "...";
+        cell.append(empty);
+      }
+
+      shiftClasses.forEach(item => {
+        const card = document.createElement("article");
+        const details = document.createElement("div");
+        const className = document.createElement("strong");
+        const time = document.createElement("span");
+        const side = document.createElement("div");
+        const teacherInput = document.createElement("textarea");
+        const doneButton = document.createElement("button");
+        const date = weekDates[dayIndex];
+        const teacherKey = getTeacherKey(day, item, weekDates[dayIndex]);
+        const legacyTeacherKey = getLegacyTeacherKey(day, item);
+        const sessionKey = getSessionKey({
+          date,
+          className: item.className,
+          startTime: item.startTime,
+          endTime: item.endTime
+        });
+        const isDone = Boolean(data.completedSessions[sessionKey]);
+        const teacherName = data.teachers[teacherKey] || getCurrentWeekLegacyTeacher(legacyTeacherKey);
+
+        card.className = "schedule-card";
+        if (isDone) card.classList.add("done-session");
+        if (isOffTeacher(teacherName)) card.classList.add("off-session");
+        details.className = "schedule-card-main";
+        side.className = "schedule-card-side";
+        className.textContent = item.className;
+        time.textContent = `${item.startTime}-${item.endTime}`;
+        teacherInput.className = "teacher-input";
+        teacherInput.placeholder = "Teacher";
+        teacherInput.value = teacherName;
+        teacherInput.rows = 2;
+        teacherInput.spellcheck = false;
+        teacherInput.setAttribute("aria-label", `Teacher for ${item.className}`);
+        teacherInput.addEventListener("input", event => {
+          const session = {
+            date,
+            day,
+            className: item.className,
+            startTime: item.startTime,
+            endTime: item.endTime
+          };
+
+          updateTeacherName(teacherKey, event.target.value);
+          card.classList.toggle("off-session", isOffTeacher(event.target.value));
+          renderAttendanceBoard();
+          renderFinance();
+          if (isOffTeacher(event.target.value) && clearCompletedSession(session)) {
+            saveData(true);
+            renderStudents();
+            renderWeeklySchedule();
+            renderAttendanceBoard();
+            renderLessonLogs();
+            renderStudentProgress();
+            renderFinance();
+          }
+        });
+        doneButton.type = "button";
+        doneButton.className = isDone ? "done-button done" : "done-button";
+        doneButton.textContent = isDone ? "Done" : "Done";
+        doneButton.addEventListener("click", () => {
+          toggleSessionDone(day, item, date);
+        });
+        details.append(className, time);
+        side.append(teacherInput, doneButton);
+        card.append(details, side);
+        cell.append(card);
+      });
+
+      weeklySchedule.append(cell);
+    });
+  });
+}
+
+function renderWeekOptions() {
+  const currentWeekStart = getWeekStart(new Date());
+  const selectedValue = formatDateValue(selectedWeekStart);
+  const selectedOffset = Math.round((selectedWeekStart - currentWeekStart) / (7 * 24 * 60 * 60 * 1000));
+  const firstOffset = Math.min(-8, selectedOffset - 4);
+  const lastOffset = Math.max(12, selectedOffset + 4);
+
+  scheduleWeekSelect.innerHTML = "";
+
+  for (let weekOffset = firstOffset; weekOffset <= lastOffset; weekOffset += 1) {
+    const weekStart = addDays(currentWeekStart, weekOffset * 7);
+    const weekEnd = addDays(weekStart, 6);
+    const option = document.createElement("option");
+    const isCurrentWeek = isSameDate(weekStart, currentWeekStart);
+
+    option.value = formatDateValue(weekStart);
+    option.textContent = `${isCurrentWeek ? "Current week - " : ""}${formatWeekRange(weekStart, weekEnd)}`;
+    scheduleWeekSelect.append(option);
+  }
+
+  scheduleWeekSelect.value = [...scheduleWeekSelect.options].some(option => option.value === selectedValue)
+    ? selectedValue
+    : formatDateValue(currentWeekStart);
+}
+
+function shiftSelectedWeek(direction) {
+  selectedWeekStart = addDays(selectedWeekStart, direction * 7);
+  renderWeekOptions();
+  renderWeeklySchedule();
+  renderAttendanceBoard();
+}
+
+function getSelectedWeekDates() {
+  return Array.from({ length: 7 }, (_, index) => addDays(selectedWeekStart, index));
+}
+
+function getCurrentWeekDates() {
+  return Array.from({ length: 7 }, (_, index) => addDays(getWeekStart(new Date()), index));
+}
+
+function getWeekStart(date) {
+  const weekStart = new Date(date);
+  const dayIndex = weekStart.getDay();
+  const mondayOffset = dayIndex === 0 ? -6 : 1 - dayIndex;
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(weekStart.getDate() + mondayOffset);
+  return weekStart;
+}
+
+function addDays(date, days) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function parseDateValue(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function normalizeDateInput(value) {
+  const cleanValue = String(value || "").trim();
+  const match = cleanValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) return "";
+
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+
+  if (
+    date.getFullYear() !== Number(year) ||
+    date.getMonth() !== Number(month) - 1 ||
+    date.getDate() !== Number(day)
+  ) {
+    return "";
+  }
+
+  return formatDateValue(date);
+}
+
+function formatShortDate(date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${day}/${month}`;
+}
+
+function formatStoredDate(value) {
+  if (!value) return "";
+
+  const normalizedDate = normalizeDateInput(value);
+  if (!normalizedDate) return value;
+
+  return formatShortDate(parseDateValue(normalizedDate));
+}
+
+function formatDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatWeekRange(weekStart, weekEnd) {
+  return `${formatShortDate(weekStart)} - ${formatShortDate(weekEnd)}`;
+}
+
+function isSameDate(firstDate, secondDate) {
+  return formatDateValue(firstDate) === formatDateValue(secondDate);
+}
+
+function getShiftKey(startTime) {
+  const minutes = timeToMinutes(startTime);
+  if (minutes >= 7 * 60 && minutes < 12 * 60 + 30) return "morning";
+  if (minutes >= 12 * 60 + 30 && minutes < 15 * 60 + 30) return "midday";
+  return "evening";
+}
+
+function timeToMinutes(timeText) {
+  const [hourText = "0", minuteText = "0"] = timeText.split(":");
+  return Number(hourText) * 60 + Number(minuteText);
+}
+
+function updateDashboard() {
+  activeCount.textContent = countStatus("Active");
+  activeClassCount.textContent = countActiveClasses();
+  pauseCount.textContent = countStatus("Temporary pause");
+  stoppedCount.textContent = countStatus("Stopped");
+}
+
+function handleAssistantMessage() {
+  const message = assistantInput.value.trim();
+  if (!message) return;
+
+  appendAssistantMessage(message, "user");
+  assistantInput.value = "";
+  appendAssistantMessage(getAssistantReply(message), "reply");
+}
+
+function appendAssistantMessage(text, type) {
+  const bubble = document.createElement("div");
+  bubble.className = `assistant-message assistant-${type}`;
+  bubble.textContent = text;
+  assistantMessages.append(bubble);
+  assistantMessages.scrollTop = assistantMessages.scrollHeight;
+}
+
+function getAssistantReply(message) {
+  const normalizedMessage = normalizeSearchText(message);
+  const addStudentMatch = message.match(/(?:thêm|add)\s+(?:học viên|student)?\s*(.+?)\s+(?:vào\s+)?lớp\s+(.+)/i);
+
+  if (addStudentMatch) {
+    const name = addStudentMatch[1].trim().replace(/^tên\s+/i, "");
+    const className = addStudentMatch[2].trim();
+    openStudentModal();
+    prefillStudentForm(name, className);
+    return `Mình đã mở form Add Student và điền sẵn ${name} vào lớp ${className}. Bạn kiểm tra lại rồi bấm Save student nhé.`;
+  }
+
+  if (normalizedMessage.includes("attendance") || normalizedMessage.includes("diem danh")) {
+    return buildAttendanceAuditReply(normalizedMessage);
+  }
+
+  const className = findClassNameInMessage(normalizedMessage);
+  if (className) {
+    const students = getStudentsByClassNameAnyStatus(className);
+    const activeStudents = students.filter(student => student.status === "Active");
+    const names = activeStudents.map(student => student.name).join(", ") || "chưa có học viên active";
+    return `${className}: ${activeStudents.length} học viên active. ${names}.`;
+  }
+
+  if (normalizedMessage.includes("hoc phi") || normalizedMessage.includes("fee") || normalizedMessage.includes("due")) {
+    const dueStudents = data.students
+      .filter(student => student.status === "Active")
+      .filter(student => getPaymentReminder(student).className !== "reminder-ok")
+      .map(student => `${student.name} (${student.className}: ${getPaymentReminder(student).text})`);
+    return dueStudents.length
+      ? `Các bạn cần follow học phí: ${dueStudents.join("; ")}.`
+      : "Hiện chưa có học viên active nào đang bị nhắc học phí.";
+  }
+
+  if (normalizedMessage.includes("pause") || normalizedMessage.includes("tam nghi")) {
+    const paused = data.students.filter(student => student.status === "Temporary pause");
+    return paused.length
+      ? `Temporary pause: ${paused.map(student => `${student.name} (${student.className})`).join(", ")}.`
+      : "Hiện không có học viên Temporary pause.";
+  }
+
+  if (normalizedMessage.includes("active")) {
+    return `Hiện có ${countStatus("Active")} học viên active và ${countActiveClasses()} lớp đang hoạt động.`;
+  }
+
+  return "Mình có thể hỗ trợ nhanh: hỏi tên lớp, hỏi học phí/due, hỏi pause/active, hoặc gõ 'thêm học viên [tên] lớp [tên lớp]' để mở form nhập liệu.";
+}
+
+function buildAttendanceAuditReply(normalizedMessage) {
+  const student = findStudentInMessage(normalizedMessage);
+
+  if (!student) {
+    return "Bạn gõ rõ hơn giúp mình tên học viên nhé. Ví dụ: attendance Kem.";
+  }
+
+  const totalLessons = getStudentCycleLessons(student);
+  const currentCycleIndex = getCurrentCycleIndex(student, totalLessons);
+  const records = getStudentAttendanceAuditRecords(student.name);
+  const currentClassRecords = records.filter(record =>
+    normalizeSearchText(record.className) === normalizeSearchText(student.className)
+  );
+  const otherClassRecords = records.filter(record =>
+    normalizeSearchText(record.className) !== normalizeSearchText(student.className)
+  );
+  const currentCycleRecords = currentClassRecords.filter(record => record.cycleIndex === currentCycleIndex);
+  const duplicateDates = getDuplicateValues(currentClassRecords.map(record => record.dateValue).filter(Boolean));
+  const duplicateLessonSlots = getDuplicateValues(currentClassRecords.map(record => `${record.cycleIndex}-${record.lessonIndex}`));
+  const issues = [];
+
+  if (otherClassRecords.length) {
+    const classes = [...new Set(otherClassRecords.map(record => record.className).filter(Boolean))].join(", ");
+    issues.push(`${otherClassRecords.length} attendance records are still under another class: ${classes}.`);
+  }
+
+  if (currentCycleRecords.length !== getCompletedLessonsInCurrentCycle(student, totalLessons)) {
+    issues.push(`Current cycle count looks different: attendance dates ${currentCycleRecords.length}, lessonsDone in Student List ${getCompletedLessonsInCurrentCycle(student, totalLessons)}.`);
+  }
+
+  if (duplicateDates.length) issues.push(`Duplicate dates: ${duplicateDates.map(formatStoredDate).join(", ")}.`);
+  if (duplicateLessonSlots.length) issues.push("Some lesson boxes have more than one saved date.");
+
+  const datesByCycle = groupAttendanceDatesByCycle(currentClassRecords);
+  const cycleSummary = Object.entries(datesByCycle)
+    .sort(([first], [second]) => Number(first) - Number(second))
+    .map(([cycleIndex, dates]) => `${getCycleLetter(Number(cycleIndex))}: ${dates.length}/${totalLessons} (${dates.map(formatStoredDate).join(", ") || "no dates"})`)
+    .join(" | ");
+
+  return [
+    `${student.name} - ${student.className}: ${formatPaymentType(student)}, status ${student.status}, Student List done ${student.lessonsDone}, paid ${getStudentPaidLessons(student)}.`,
+    `Saved attendance in current class: ${currentClassRecords.length}. ${cycleSummary || "No attendance dates found."}`,
+    issues.length ? `Needs checking: ${issues.join(" ")}` : "No obvious mismatch found."
+  ].join(" ");
+}
+
+function findStudentInMessage(normalizedMessage) {
+  return data.students.find(student => normalizedMessage.includes(normalizeSearchText(student.name)));
+}
+
+function getStudentAttendanceAuditRecords(studentName) {
+  const normalizedStudentName = normalizeSearchText(studentName);
+
+  return Object.keys(data.attendance || {})
+    .map(key => {
+      const parts = key.split("|");
+      if (parts.length < 6 || normalizeSearchText(parts[4]) !== normalizedStudentName) return null;
+
+      return {
+        key,
+        dateValue: parts[0] || "",
+        className: parts[1] || "",
+        startTime: parts[2] || "",
+        endTime: parts[3] || "",
+        studentName: parts[4] || "",
+        cycleIndex: parts.length >= 7 ? Number(parts[5]) : 0,
+        lessonIndex: Number(parts.length >= 7 ? parts[6] : parts[5])
+      };
+    })
+    .filter(Boolean)
+    .sort((first, second) => {
+      const dateDiff = first.dateValue.localeCompare(second.dateValue);
+      if (dateDiff) return dateDiff;
+      return first.lessonIndex - second.lessonIndex;
+    });
+}
+
+function groupAttendanceDatesByCycle(records) {
+  return records.reduce((groups, record) => {
+    const cycleIndex = Number(record.cycleIndex) || 0;
+    if (!groups[cycleIndex]) groups[cycleIndex] = [];
+    if (record.dateValue) groups[cycleIndex].push(record.dateValue);
+    return groups;
+  }, {});
+}
+
+function getDuplicateValues(values) {
+  const counts = values.reduce((map, value) => {
+    map.set(value, (map.get(value) || 0) + 1);
+    return map;
+  }, new Map());
+
+  return [...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([value]) => value);
+}
+
+function prefillStudentForm(name, className) {
+  document.querySelector("#newStudentName").value = name;
+  const existingClass = getActiveClassNames().find(item => normalizeSearchText(item) === normalizeSearchText(className));
+
+  if (existingClass) {
+    newStudentClassSelect.value = existingClass;
+  } else {
+    newStudentClassSelect.value = "__new__";
+    newStudentClassNew.value = className;
+  }
+
+  newStudentPayment.value = "Monthly";
+  newStudentTotalLessons.value = 8;
+  newStudentPaidLessons.value = 8;
+  document.querySelector("#newStudentLessons").value = 0;
+  document.querySelector("#newStudentStatus").value = "Active";
+  updateNewClassField();
+  updateDiscountField();
+}
+
+function findClassNameInMessage(normalizedMessage) {
+  const classItem = data.classes.find(item => normalizedMessage.includes(normalizeSearchText(item.name)));
+  return classItem ? classItem.name : "";
+}
+
+function getStudentsByClassNameAnyStatus(className) {
+  return data.students.filter(student => normalizeSearchText(student.className) === normalizeSearchText(className));
+}
+
+function countStatus(status) {
+  return data.students.filter(student => student.status === status).length;
+}
+
+function countActiveClasses() {
+  return getActiveClassNames().length;
+}
+
+function getActiveClassNames() {
+  const stoppedClasses = new Set(
+    data.classes
+      .filter(isStoppedClass)
+      .map(classItem => classItem.name.trim())
+  );
+  const activeClasses = new Set(
+    data.students
+      .filter(student => student.status === "Active")
+      .map(student => student.className.trim())
+      .filter(className => className && !stoppedClasses.has(className))
+  );
+
+  return [...activeClasses];
+}
+
+function showToast(message = "Saved") {
+  toast.textContent = message;
+  toast.classList.add("show");
+  window.setTimeout(() => toast.classList.remove("show"), 1600);
+}
+
+function openStudentModal(index = null) {
+  editingStudentIndex = index;
+  studentForm.reset();
+  renderStudentModalClassChoices();
+  document.querySelector("#studentModalEyebrow").textContent = index === null ? "New student" : "Edit student";
+  document.querySelector("#studentModalTitle").textContent = index === null ? "Add Student" : "Edit Student";
+  deleteStudentModal.classList.toggle("show", index !== null);
+
+  if (index === null) {
+    document.querySelector("#newStudentLessons").value = 0;
+    newStudentPayment.value = "Monthly";
+    newStudentDiscount.value = 0;
+    updateLessonDefaults(true);
+    document.querySelector("#newStudentStatus").value = "Active";
+  } else {
+    fillStudentForm(data.students[index]);
+  }
+
+  updateNewClassField();
+  updateDiscountField();
+  studentModal.classList.add("open");
+  studentModal.setAttribute("aria-hidden", "false");
+  document.querySelector("#newStudentName").focus();
+}
+
+function closeStudentModal() {
+  studentModal.classList.remove("open");
+  studentModal.setAttribute("aria-hidden", "true");
+  editingStudentIndex = null;
+}
+
+function openPaymentModal(index) {
+  editingPaymentStudentIndex = index;
+  const student = data.students[index];
+  const totalLessons = getStudentCycleLessons(student);
+  const paymentType = normalizePaymentType(student.paymentType);
+
+  paymentForm.reset();
+  paymentDate.value = formatDateValue(new Date());
+  paymentPackage.value = paymentType === "Course" || paymentType === "Course Dis (%)" ? "Course" : "Monthly";
+  paymentLessons.value = paymentPackage.value === "Course" ? 24 : totalLessons || 8;
+  paymentStudentSummary.innerHTML = `
+    <strong>${escapeHtml(student.name)} - ${escapeHtml(student.className)}</strong>
+    <span>Done: ${student.lessonsDone} | Paid: ${getStudentPaidLessons(student)} | Current cycle: ${getCycleLetter(getCurrentCycleIndex(student, totalLessons))}</span>
+  `;
+  renderPaymentHistory(student);
+  paymentModal.classList.add("open");
+  paymentModal.setAttribute("aria-hidden", "false");
+  paymentDate.focus();
+}
+
+function closePaymentModal() {
+  paymentModal.classList.remove("open");
+  paymentModal.setAttribute("aria-hidden", "true");
+  editingPaymentStudentIndex = null;
+}
+
+function updatePaymentLessonDefault() {
+  if (paymentPackage.value === "Monthly") paymentLessons.value = 8;
+  if (paymentPackage.value === "Course") paymentLessons.value = 24;
+}
+
+function saveStudentPayment() {
+  if (editingPaymentStudentIndex === null) return;
+
+  const student = data.students[editingPaymentStudentIndex];
+  const lessons = Math.max(1, Math.floor(Number(paymentLessons.value) || 0));
+  const cycleIndex = getNextPaymentCycleIndex(student);
+  const paymentRecord = {
+    date: paymentDate.value || formatDateValue(new Date()),
+    package: paymentPackage.value,
+    cycleIndex,
+    lessons,
+    note: paymentNote.value.trim(),
+    createdAt: new Date().toISOString()
+  };
+
+  student.paymentHistory = normalizePaymentHistory(student.paymentHistory);
+  student.paymentHistory.push(paymentRecord);
+  student.paidLessons = getStudentPaidLessons(student) + lessons;
+  student.lastPaymentDate = paymentRecord.date;
+  student.nextDueDate = getNextDueDateFromPayment(paymentRecord.date, student.paymentType);
+  data.students[editingPaymentStudentIndex] = student;
+
+  normalizeData();
+  saveData(true);
+  closePaymentModal();
+  render();
+  showTab("studentsTab");
+}
+
+function renderPaymentHistory(student) {
+  const history = normalizePaymentHistory(student.paymentHistory);
+  paymentHistoryList.innerHTML = "";
+
+  if (!history.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted-cell";
+    empty.textContent = "No payment history yet. Existing paid lessons are kept as legacy balance.";
+    paymentHistoryList.append(empty);
+    return;
+  }
+
+  [...history].reverse().forEach(record => {
+    const row = document.createElement("div");
+    row.className = "payment-history-row";
+    row.innerHTML = `
+      <strong>${getCycleLetter(record.cycleIndex)} | ${formatStoredDate(record.date)}</strong>
+      <span>${escapeHtml(record.package)} - ${record.lessons} lessons${record.note ? ` | ${escapeHtml(record.note)}` : ""}</span>
+    `;
+    paymentHistoryList.append(row);
+  });
+}
+
+function getNextPaymentCycleIndex(student) {
+  const history = normalizePaymentHistory(student.paymentHistory);
+  if (history.length) return Math.max(...history.map(record => record.cycleIndex)) + 1;
+  return Math.floor(getStudentPaidLessons(student) / getStudentCycleLessons(student));
+}
+
+function getNextDueDateFromPayment(dateValue, paymentType) {
+  if (!dateValue) return "";
+  const normalizedPaymentType = normalizePaymentType(paymentType);
+  if (normalizedPaymentType === "Monthly" || normalizedPaymentType === "Monthly Dis (%)") {
+    return formatDateValue(addDays(parseDateValue(dateValue), 30));
+  }
+  return "";
+}
+
+function addStudentFromForm() {
+  const formData = new FormData(studentForm);
+  const selectedClass = newStudentClassSelect.value;
+  const className = selectedClass === "__new__" ? newStudentClassNew.value.trim() : selectedClass;
+
+  if (!className) {
+    newStudentClassNew.focus();
+    return;
+  }
+
+  const student = {
+    name: repairVietnameseText((formData.get("name") || "").trim()),
+    className: repairVietnameseText(className),
+    contact: repairVietnameseText((formData.get("contact") || "").trim()),
+    paymentType: normalizePaymentType(formData.get("paymentType") || "Monthly"),
+    discountPercent: isDiscountPaymentType(formData.get("paymentType")) ? normalizeDiscountPercent(formData.get("discountPercent")) : 0,
+    lessonsDone: Math.max(0, Number(formData.get("lessonsDone")) || 0),
+    totalLessons: normalizeTotalLessons(formData.get("totalLessons"), formData.get("paymentType")),
+    paidLessons: normalizePaidLessons(formData.get("paidLessons"), formData.get("totalLessons"), formData.get("paymentType")),
+    lastPaymentDate: formData.get("lastPaymentDate") || "",
+    nextDueDate: formData.get("nextDueDate") || "",
+    status: normalizeStatus(formData.get("status") || "Active"),
+    paymentHistory: editingStudentIndex === null ? [] : data.students[editingStudentIndex].paymentHistory || []
+  };
+
+  if (editingStudentIndex === null) {
+    data.students.push(student);
+  } else {
+    migrateStudentLinkedRecords(data.students[editingStudentIndex], student);
+    data.students[editingStudentIndex] = student;
+  }
+
+  normalizeData();
+  syncClassStudents();
+  saveData(true);
+  render();
+  closeStudentModal();
+  showTab("studentsTab");
+}
+
+function deleteEditingStudent() {
+  if (editingStudentIndex === null) return;
+
+  const student = data.students[editingStudentIndex];
+  const confirmed = window.confirm(`Delete ${student.name}? This cannot be undone.`);
+  if (!confirmed) return;
+
+  data.students.splice(editingStudentIndex, 1);
+  normalizeData();
+  syncClassStudents();
+  saveData(true);
+  render();
+  closeStudentModal();
+  showTab("studentsTab");
+}
+
+function fillStudentForm(student) {
+  document.querySelector("#newStudentName").value = student.name;
+  document.querySelector("#newStudentContact").value = student.contact;
+  newStudentPayment.value = student.paymentType;
+  newStudentDiscount.value = student.discountPercent || 0;
+  document.querySelector("#newStudentLessons").value = student.lessonsDone;
+  newStudentTotalLessons.value = getStudentCycleLessons(student);
+  newStudentPaidLessons.value = getStudentPaidLessons(student);
+  document.querySelector("#newStudentLastPayment").value = student.lastPaymentDate;
+  document.querySelector("#newStudentNextDue").value = student.nextDueDate;
+  document.querySelector("#newStudentStatus").value = student.status;
+
+  const hasClassOption = [...newStudentClassSelect.options].some(option => option.value === student.className);
+  if (hasClassOption) {
+    newStudentClassSelect.value = student.className;
+    newStudentClassNew.value = "";
+  } else {
+    newStudentClassSelect.value = "__new__";
+    newStudentClassNew.value = student.className;
+  }
+}
+
+function renderStudentModalClassChoices() {
+  const classNames = getActiveClassNames();
+
+  newStudentClassSelect.innerHTML = "";
+
+  classNames.forEach(className => {
+    const option = document.createElement("option");
+    option.value = className;
+    option.textContent = className;
+    newStudentClassSelect.append(option);
+  });
+
+  const newClassOption = document.createElement("option");
+  newClassOption.value = "__new__";
+  newClassOption.textContent = "New class";
+  newStudentClassSelect.append(newClassOption);
+
+  if (!classNames.length) {
+    newStudentClassSelect.value = "__new__";
+  }
+}
+
+function updateNewClassField() {
+  const isNewClass = newStudentClassSelect.value === "__new__";
+  newClassField.classList.toggle("show", isNewClass);
+  newStudentClassNew.required = isNewClass;
+  if (!isNewClass) newStudentClassNew.value = "";
+}
+
+function updateDiscountField() {
+  const hasDiscount = isDiscountPaymentType(newStudentPayment.value);
+  discountField.classList.toggle("show", hasDiscount);
+  newStudentDiscount.required = hasDiscount;
+  if (!hasDiscount) newStudentDiscount.value = 0;
+}
+
+function updateLessonDefaults(force) {
+  const defaultLessons = getPaymentCycleLessons(newStudentPayment.value);
+  if (force || !Number(newStudentTotalLessons.value)) {
+    newStudentTotalLessons.value = defaultLessons;
+  }
+  if (force || !Number(newStudentPaidLessons.value)) {
+    newStudentPaidLessons.value = defaultLessons;
+  }
+}
+
+function importStudentsFromCsv(csvText) {
+  const rows = parseCsv(csvText).filter(row => row.some(cell => cell.trim()));
+
+  if (rows.length < 2) {
+    window.alert("CSV file has no student rows.");
+    return;
+  }
+
+  const headers = rows[0].map(normalizeHeader);
+  const importedStudents = rows.slice(1).map(row => studentFromCsvRow(headers, row)).filter(student => student.name);
+
+  if (!importedStudents.length) {
+    window.alert("No valid students found. Please check the Student Name column.");
+    return;
+  }
+
+  const shouldReplace = window.confirm(`Import ${importedStudents.length} students from CSV? Press OK to replace the current Student List, or Cancel to add them below the current list.`);
+  if (shouldReplace) {
+    data.students = importedStudents;
+  } else {
+    data.students.push(...importedStudents);
+  }
+
+  normalizeData();
+  syncClassStudents();
+  saveData(true);
+  render();
+  showTab("studentsTab");
+}
+
+function studentFromCsvRow(headers, row) {
+  const get = (...names) => {
+    const index = headers.findIndex(header => names.includes(header));
+    return index >= 0 ? (row[index] || "").trim() : "";
+  };
+
+  return {
+    name: get("student name", "name", "student"),
+    className: get("class", "class name"),
+    contact: get("contact", "phone", "email"),
+    paymentType: normalizePaymentType(get("payment type", "payment") || "Monthly"),
+    lessonsDone: Number(get("lessons done", "lessons", "lesson done")) || 0,
+    totalLessons: Number(get("total lessons", "total lesson", "cycle lessons")) || 0,
+    paidLessons: Number(get("paid lessons", "paid lesson", "paid")) || 0,
+    lastPaymentDate: get("last payment date", "last payment"),
+    nextDueDate: get("next due date", "next due"),
+    status: normalizeStatus(get("status") || "Active")
+  };
+}
+
+function parseCsv(csvText) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let insideQuotes = false;
+
+  for (let index = 0; index < csvText.length; index += 1) {
+    const char = csvText[index];
+    const nextChar = csvText[index + 1];
+
+    if (char === '"' && insideQuotes && nextChar === '"') {
+      value += '"';
+      index += 1;
+    } else if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === "," && !insideQuotes) {
+      row.push(value);
+      value = "";
+    } else if ((char === "\n" || char === "\r") && !insideQuotes) {
+      if (char === "\r" && nextChar === "\n") index += 1;
+      row.push(value);
+      rows.push(row);
+      row = [];
+      value = "";
+    } else {
+      value += char;
+    }
+  }
+
+  row.push(value);
+  rows.push(row);
+  return rows;
+}
+
+function normalizeHeader(header) {
+  return header.replace(/^\uFEFF/, "").trim().toLowerCase();
+}
+
+function normalizeStatus(status) {
+  const cleanStatus = status.trim().toLowerCase();
+  if (cleanStatus === "temporary pause" || cleanStatus === "pause" || cleanStatus === "paused") return "Temporary pause";
+  if (cleanStatus === "stopped" || cleanStatus === "stop") return "Stopped";
+  return "Active";
+}
+
+function normalizeSchedule(schedule) {
+  return schedule
+    .replace(/\b([A-Za-z]+)\/([A-Za-z]+)\s+(\d{1,2}:\d{2})\b/g, (match, firstDay, secondDay, time) => {
+      const endTime = addOneHour(time);
+      return `${firstDay}, ${time}-${endTime} | ${secondDay}, ${time}-${endTime}`;
+    })
+    .split("|")
+    .map(slot => slot.trim())
+    .filter(Boolean)
+    .map(slot => {
+      const [dayPart, timePart] = slot.split(",").map(part => part.trim());
+      const [startTime, endTime] = normalizeTimeRange(timePart || "18:00");
+      return `${dayPart || "Mon"}, ${startTime}-${endTime}`;
+    })
+    .join(" | ");
+}
+
+function decodeCsvFile(buffer) {
+  const bytes = new Uint8Array(buffer);
+
+  if (bytes[0] === 0xFF && bytes[1] === 0xFE) {
+    return new TextDecoder("utf-16le").decode(bytes);
+  }
+
+  if (bytes[0] === 0xFE && bytes[1] === 0xFF) {
+    return new TextDecoder("utf-16be").decode(bytes);
+  }
+
+  const utf8Text = new TextDecoder("utf-8").decode(bytes);
+  if (!utf8Text.includes("\uFFFD")) return utf8Text;
+
+  try {
+    return new TextDecoder("windows-1258").decode(bytes);
+  } catch {
+    return utf8Text;
+  }
+}
+
+function repairVietnameseText(text) {
+  if (!looksLikeMojibake(text)) return text;
+
+  const bytes = [];
+
+  for (const char of text) {
+    const byte = windows1252Byte(char);
+    if (byte === null) return text;
+    bytes.push(byte);
+  }
+
+  try {
+    const repaired = new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array(bytes));
+    return repaired.includes("\uFFFD") ? text : repaired;
+  } catch {
+    return text;
+  }
+}
+
+function looksLikeMojibake(text) {
+  return /(Ãƒ|Ã‚|Ã„|Ã†|Ã¡Âº|Ã¡Â»|Ã¢â‚¬|Ã¢â‚¬â„¢|Ã¢â‚¬Å“|Ã¢â‚¬Â)/.test(text);
+}
+
+function windows1252Byte(char) {
+  const code = char.codePointAt(0);
+  if (code <= 0xFF) return code;
+
+  const windows1252Map = {
+    0x20AC: 0x80,
+    0x201A: 0x82,
+    0x0192: 0x83,
+    0x201E: 0x84,
+    0x2026: 0x85,
+    0x2020: 0x86,
+    0x2021: 0x87,
+    0x02C6: 0x88,
+    0x2030: 0x89,
+    0x0160: 0x8A,
+    0x2039: 0x8B,
+    0x0152: 0x8C,
+    0x017D: 0x8E,
+    0x2018: 0x91,
+    0x2019: 0x92,
+    0x201C: 0x93,
+    0x201D: 0x94,
+    0x2022: 0x95,
+    0x2013: 0x96,
+    0x2014: 0x97,
+    0x02DC: 0x98,
+    0x2122: 0x99,
+    0x0161: 0x9A,
+    0x203A: 0x9B,
+    0x0153: 0x9C,
+    0x017E: 0x9E,
+    0x0178: 0x9F
+  };
+
+  return windows1252Map[code] ?? null;
+}
+
+function showTab(tabId) {
+  document.querySelectorAll(".tab-button").forEach(button => {
+    button.classList.toggle("active", button.dataset.tab === tabId);
+  });
+
+  document.querySelectorAll(".tab-panel").forEach(panel => {
+    panel.classList.toggle("active", panel.id === tabId);
+  });
+}
+
+function normalizePaymentType(paymentType) {
+  const cleanPaymentType = String(paymentType || "").trim().toLowerCase();
+  if (cleanPaymentType === "per course") return "Course";
+  if (cleanPaymentType === "per lesson") return "Monthly";
+  if (cleanPaymentType === "monthly dis (%)" || cleanPaymentType === "monthly dis" || cleanPaymentType === "monthly discount") return "Monthly Dis (%)";
+  if (cleanPaymentType === "course dis (%)" || cleanPaymentType === "course dis" || cleanPaymentType === "course discount") return "Course Dis (%)";
+  if (cleanPaymentType === "free") return "Free";
+  if (cleanPaymentType === "course") return "Course";
+  return "Monthly";
+}
+
+function isDiscountPaymentType(paymentType) {
+  const normalizedPaymentType = normalizePaymentType(paymentType);
+  return normalizedPaymentType === "Monthly Dis (%)" || normalizedPaymentType === "Course Dis (%)";
+}
+
+function normalizeDiscountPercent(value) {
+  const percent = Number(value);
+  if (!Number.isFinite(percent)) return 0;
+  return Math.min(100, Math.max(0, percent));
+}
+
+function formatPaymentType(student) {
+  if (!isDiscountPaymentType(student.paymentType)) return student.paymentType;
+  return `${student.paymentType} - ${normalizeDiscountPercent(student.discountPercent)}%`;
+}
+
+function getPaymentCycleLessons(paymentType) {
+  const normalizedPaymentType = normalizePaymentType(paymentType);
+  if (normalizedPaymentType === "Free") return 1;
+  return normalizedPaymentType === "Course" || normalizedPaymentType === "Course Dis (%)" ? 24 : 8;
+}
+
+function normalizeTotalLessons(value, paymentType) {
+  const totalLessons = Math.floor(Number(value));
+  if (Number.isFinite(totalLessons) && totalLessons > 0) return totalLessons;
+  return getPaymentCycleLessons(paymentType);
+}
+
+function normalizePaidLessons(value, totalLessons, paymentType) {
+  const paidLessons = Math.floor(Number(value));
+  if (Number.isFinite(paidLessons) && paidLessons > 0) return paidLessons;
+  return normalizeTotalLessons(totalLessons, paymentType);
+}
+
+function getStudentCycleLessons(student) {
+  return normalizeTotalLessons(student.totalLessons, student.paymentType);
+}
+
+function getStudentPaidLessons(student) {
+  return normalizePaidLessons(student.paidLessons, student.totalLessons, student.paymentType);
+}
+
+function getPaymentReminder(student) {
+  const totalLessons = getStudentPaidLessons(student);
+  const lessonsDone = Math.max(0, Number(student.lessonsDone) || 0);
+  const nextLesson = lessonsDone + 1;
+  const penultimateLesson = totalLessons - 1;
+
+  if (lessonsDone >= totalLessons) {
+    return { text: "Payment due now", className: "reminder-due" };
+  }
+
+  if (nextLesson >= penultimateLesson) {
+    return { text: `Remind before lesson ${penultimateLesson}/${totalLessons}`, className: "reminder-soon" };
+  }
+
+  return { text: `${totalLessons - lessonsDone} lessons left`, className: "reminder-ok" };
+}
+
+function syncClassStudents() {
+  const previousSchedules = new Map(data.classes.map(classItem => [classItem.name.trim(), classItem.schedule || ""]));
+  const previousStatuses = new Map(data.classes.map(classItem => [classItem.name.trim(), classItem.status || "Active"]));
+  const previousStatusHistories = new Map(data.classes.map(classItem => [classItem.name.trim(), normalizeClassStatusHistory(classItem.statusHistory)]));
+  const visibleStudentClassNames = data.students
+    .filter(student => student.status !== "Stopped")
+    .map(student => student.className.trim())
+    .filter(Boolean);
+  const stoppedClassNames = data.classes
+    .filter(classItem => getLatestClassStatus(normalizeClassStatusHistory(classItem.statusHistory)) === "Stopped" || classItem.status === "Stopped")
+    .map(classItem => classItem.name.trim())
+    .filter(Boolean);
+  const classNames = [...new Set([...visibleStudentClassNames, ...stoppedClassNames])];
+
+  data.classes = classNames.map(className => {
+    const studentNames = data.students
+      .filter(student => student.className.trim() === className && student.status !== "Stopped")
+      .map(student => student.name.trim())
+      .filter(Boolean);
+
+    return {
+      name: className,
+      students: studentNames.join(", "),
+      schedule: normalizeSchedule(previousSchedules.get(className) || ""),
+      status: previousStatuses.get(className) === "Stopped" ? "Stopped" : "Active",
+      statusHistory: previousStatusHistories.get(className) || []
+    };
+  });
+}
+
+function ensureClassExists(className) {
+  const cleanName = className.trim();
+  if (!cleanName) return;
+
+  const exists = data.classes.some(classItem => classItem.name.trim() === cleanName);
+  if (exists) return;
+
+  data.classes.push({
+    name: cleanName,
+    students: "",
+    schedule: "",
+    status: "Active",
+    statusHistory: []
+  });
+}
+
+function renderClassOptions() {
+  classOptions.innerHTML = "";
+
+  data.classes.forEach(classItem => {
+    const option = document.createElement("option");
+    option.value = classItem.name;
+    classOptions.append(option);
+  });
+}
+
+function renderFilterClassOptions() {
+  const currentValue = filterClass.value;
+  filterClass.innerHTML = '<option value="">All classes</option>';
+
+  getSortedClassEntries(data.classes.map((classItem, index) => ({ classItem, index }))).forEach(({ classItem }) => {
+    const option = document.createElement("option");
+    option.value = classItem.name;
+    option.textContent = classItem.name;
+    filterClass.append(option);
+  });
+
+  filterClass.value = [...filterClass.options].some(option => option.value === currentValue) ? currentValue : "";
+}
+
+function renderClassListFilterOptions() {
+  renderClassSelectOptions(classListFilter, classListFilter.value);
+}
+
+function renderAttendanceClassFilterOptions() {
+  renderClassSelectOptions(attendanceClassFilter, attendanceClassFilter.value);
+}
+
+function renderLessonLogClassFilterOptions() {
+  renderClassSelectOptions(lessonLogClassFilter, lessonLogClassFilter.value);
+}
+
+function renderProgressStudentOptions() {
+  const currentValue = progressStudentSelect.value;
+  progressStudentSelect.innerHTML = "";
+
+  const optionPlaceholder = document.createElement("option");
+  optionPlaceholder.value = "";
+  optionPlaceholder.textContent = "Choose a student";
+  progressStudentSelect.append(optionPlaceholder);
+
+  data.students
+    .map((student, index) => ({ student, index }))
+    .sort(compareStudentEntries)
+    .forEach(({ student, index }) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = `${student.name} - ${student.className}`;
+      progressStudentSelect.append(option);
+    });
+
+  if ([...progressStudentSelect.options].some(option => option.value === currentValue)) {
+    progressStudentSelect.value = currentValue;
+  } else {
+    const firstActiveOption = [...progressStudentSelect.options].find(option => {
+      const student = data.students[Number(option.value)];
+      return student && student.status === "Active";
+    });
+    progressStudentSelect.value = firstActiveOption ? firstActiveOption.value : "";
+  }
+}
+
+function renderTuitionStudentOptions() {
+  const currentValue = tuitionStudentSelect.value;
+  tuitionStudentSelect.innerHTML = "";
+
+  data.students
+    .map((student, index) => ({ student, index }))
+    .sort(compareStudentEntries)
+    .forEach(({ student, index }) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = `${student.name} - ${student.className}`;
+      tuitionStudentSelect.append(option);
+    });
+
+  if ([...tuitionStudentSelect.options].some(option => option.value === currentValue)) {
+    tuitionStudentSelect.value = currentValue;
+  } else {
+    tuitionStudentSelect.value = tuitionStudentSelect.options[0]?.value || "";
+  }
+
+}
+
+function renderTuitionSlip(resetEditableFields = false) {
+  const student = data.students[Number(tuitionStudentSelect.value)];
+
+  if (student && resetEditableFields) {
+    tuitionStudentName.value = student.name;
+    tuitionFeeType.value = normalizePaymentType(student.paymentType).includes("Course") ? "Course" : "Monthly";
+    tuitionPackageLessons.value = getTuitionPackageLessons(student);
+    tuitionComment.value = getDefaultTuitionComment(student);
+    if (!tuitionTotalFee.value) tuitionTotalFee.value = "";
+  }
+
+  slipStudentName.textContent = tuitionStudentName.value || student?.name || "-";
+  slipFeeType.textContent = tuitionFeeType.value || "Monthly";
+  const packageLessons = Number(tuitionPackageLessons.value) || 0;
+  slipLessonCount.textContent = `${packageLessons} ${packageLessons === 1 ? "lesson" : "lessons"}`;
+  slipTotalFee.textContent = formatFeeDisplay(tuitionTotalFee.value);
+  slipComment.textContent = tuitionComment.value || "-";
+  renderSlipQr();
+}
+
+function getTuitionPackageLessons(student) {
+  if (!student) return 0;
+  if (tuitionFeeType.value === "Course") return getStudentCycleLessons(student);
+  return 8;
+}
+
+function getDefaultTuitionComment(student) {
+  return getParentReportDraftForStudent(student);
+}
+
+function getParentReportDraftForStudent(student) {
+  if (!student) return "";
+  const entries = getStudentProgressEntries(student, true);
+  const summary = buildStudentPatternSummary(entries);
+  return buildParentDraft(student, summary, entries);
+}
+
+function formatFeeDisplay(value) {
+  const cleanValue = String(value || "").trim();
+  if (!cleanValue) return "0 VND";
+  const numericValue = Number(cleanValue.replace(/[^\d]/g, ""));
+  if (Number.isFinite(numericValue) && numericValue > 0 && /^\D*\d[\d\s,.]*\D*$/.test(cleanValue)) {
+    return `${numericValue.toLocaleString("en-US")} VND`;
+  }
+  return cleanValue;
+}
+
+function renderSlipQr() {
+  slipQrPreview.innerHTML = "";
+  const image = document.createElement("img");
+  image.src = "assets/payment-qr.png";
+  image.alt = "Payment QR";
+  slipQrPreview.classList.remove("empty");
+  slipQrPreview.append(image);
+}
+
+function printTuitionSlipPreview() {
+  applyTuitionSlipPrintPage();
+  document.body.classList.add("printing-tuition-slip");
+  showTab("tuitionSlipTab");
+  window.setTimeout(() => {
+    window.print();
+    window.setTimeout(cleanupTuitionSlipPrintPage, 500);
+  }, 50);
+}
+
+function applyTuitionSlipPrintPage() {
+  document.querySelector("#tuitionSlipPrintPage")?.remove();
+  const style = document.createElement("style");
+  style.id = "tuitionSlipPrintPage";
+  style.textContent = "@page { size: A4 portrait; margin: 8mm; }";
+  document.head.append(style);
+  window.addEventListener("afterprint", cleanupTuitionSlipPrintPage, { once: true });
+}
+
+function cleanupTuitionSlipPrintPage() {
+  document.body.classList.remove("printing-tuition-slip");
+  document.querySelector("#tuitionSlipPrintPage")?.remove();
+}
+
+function renderClassSelectOptions(select, currentValue) {
+  select.innerHTML = '<option value="">All classes</option>';
+
+  getSortedClassEntries(data.classes.map((classItem, index) => ({ classItem, index }))).forEach(({ classItem }) => {
+    const option = document.createElement("option");
+    option.value = classItem.name;
+    option.textContent = classItem.name;
+    select.append(option);
+  });
+
+  select.value = [...select.options].some(option => option.value === currentValue) ? currentValue : "";
+}
+
+function getFilteredStudentEntries() {
+  const selectedClass = filterClass.value;
+  const selectedStatus = filterStatus.value;
+  const dueDate = filterDueDate.value;
+  const dueMonth = filterDueMonth.value;
+  const dueYear = filterDueYear.value.trim();
+
+  return data.students
+    .map((student, index) => ({ student, index }))
+    .filter(({ student }) => {
+      if (selectedClass && student.className !== selectedClass) return false;
+      if (selectedStatus && student.status !== selectedStatus) return false;
+      if (dueDate && student.nextDueDate !== dueDate) return false;
+      if (dueMonth && !student.nextDueDate.startsWith(`${dueMonth}-`)) return false;
+      if (dueYear && !student.nextDueDate.startsWith(`${dueYear}-`)) return false;
+      return true;
+    })
+    .sort(compareStudentEntries);
+}
+
+function getFilteredClassEntries() {
+  const selectedClass = classListFilter.value;
+  const entries = data.classes
+    .map((classItem, index) => ({ classItem, index }))
+    .filter(({ classItem }) => !selectedClass || classItem.name === selectedClass);
+
+  return getSortedClassEntries(entries);
+}
+
+function getFilteredAttendanceGroups(groups) {
+  const selectedClass = attendanceClassFilter.value;
+  return getSortedAttendanceGroups(groups
+    .filter(group => !selectedClass || group.className === selectedClass));
+}
+
+function renderLessonLogs() {
+  lessonLogBoard.innerHTML = "";
+  const logs = getFilteredLessonLogs();
+
+  if (!logs.length) {
+    const empty = document.createElement("div");
+    empty.className = "attendance-empty";
+    empty.textContent = "No lesson logs found.";
+    lessonLogBoard.append(empty);
+    return;
+  }
+
+  logs.forEach(log => lessonLogBoard.append(createLessonLogCard(log)));
+}
+
+function createLessonLogCard(log) {
+  const card = document.createElement("article");
+  const header = document.createElement("div");
+  const title = document.createElement("div");
+  const className = document.createElement("strong");
+  const meta = document.createElement("span");
+  const body = document.createElement("div");
+  const studentNotes = document.createElement("div");
+
+  card.className = isRecentLessonLog(log) ? "lesson-log-card new-lesson-log" : "lesson-log-card";
+  header.className = "lesson-log-card-header";
+  title.className = "lesson-log-title";
+  body.className = "lesson-log-body";
+  studentNotes.className = "lesson-log-students";
+  className.textContent = log.className;
+  meta.textContent = `${formatStoredDate(log.date)} | ${log.startTime}-${log.endTime} | ${log.teacher || "No teacher"}`;
+  title.append(className, meta);
+  header.append(title);
+
+  if (isRecentLessonLog(log)) {
+    const badge = document.createElement("span");
+    badge.className = "lesson-log-badge";
+    badge.textContent = "New";
+    header.append(badge);
+  }
+
+  body.append(
+    createLessonLogField("What taught", log.taught || "-"),
+    createLessonLogField("Homework", log.homework || "-"),
+    createLessonLogField("General note", log.note || "-")
+  );
+
+  if (log.studentNotes.length) {
+    const heading = document.createElement("h4");
+    heading.textContent = "Student notes";
+    studentNotes.append(heading);
+    log.studentNotes.forEach(note => {
+      const row = document.createElement("div");
+      const name = document.createElement("strong");
+      const detail = document.createElement("span");
+      row.className = "lesson-log-student-note";
+      name.textContent = note.studentName;
+      detail.textContent = `${note.performance}${note.note ? ` - ${note.note}` : ""}`;
+      row.append(name, detail);
+      studentNotes.append(row);
+    });
+  }
+
+  card.append(header, body, studentNotes);
+  return card;
+}
+
+function isRecentLessonLog(log) {
+  const updatedAt = new Date(log.updatedAt || log.createdAt || log.date);
+  if (Number.isNaN(updatedAt.getTime())) return false;
+  return Date.now() - updatedAt.getTime() <= 7 * 24 * 60 * 60 * 1000;
+}
+
+function createLessonLogField(label, value) {
+  const field = document.createElement("div");
+  const title = document.createElement("strong");
+  const content = document.createElement("p");
+
+  field.className = "lesson-log-field";
+  title.textContent = label;
+  content.textContent = value;
+  field.append(title, content);
+  return field;
+}
+
+function getFilteredLessonLogs() {
+  const selectedClass = lessonLogClassFilter.value;
+  const selectedTeacher = normalizeSearchText(lessonLogTeacherFilter.value);
+  const selectedDate = lessonLogDateFilter.value;
+
+  return [...data.lessonLogs]
+    .filter(log => {
+      if (selectedClass && log.className !== selectedClass) return false;
+      if (selectedTeacher && !normalizeSearchText(log.teacher).includes(selectedTeacher)) return false;
+      if (selectedDate && log.date !== selectedDate) return false;
+      return true;
+    })
+    .sort((first, second) => {
+      const dateDiff = `${second.date} ${second.startTime}`.localeCompare(`${first.date} ${first.startTime}`);
+      if (dateDiff) return dateDiff;
+      return compareText(first.className, second.className);
+    });
+}
+
+function clearLessonLogFilters() {
+  lessonLogClassFilter.value = "";
+  lessonLogTeacherFilter.value = "";
+  lessonLogDateFilter.value = "";
+  renderLessonLogs();
+}
+
+function renderStudentProgress() {
+  studentProgressBoard.innerHTML = "";
+  const selectedStudent = data.students[Number(progressStudentSelect.value)];
+
+  if (!selectedStudent) {
+    const empty = document.createElement("div");
+    empty.className = "attendance-empty";
+    empty.textContent = "Choose a student to view progress.";
+    studentProgressBoard.append(empty);
+    return;
+  }
+
+  const entries = getStudentProgressEntries(selectedStudent);
+  const allEntries = getStudentProgressEntries(selectedStudent, true);
+  const summary = buildStudentPatternSummary(entries);
+  const parentDraft = buildParentDraft(selectedStudent, summary, entries);
+
+  studentProgressBoard.append(
+    createStudentSnapshotCard(selectedStudent, allEntries),
+    createPatternSummaryCard(summary),
+    createProgressTimelineCard(entries),
+    createParentDraftCard(parentDraft)
+  );
+}
+
+function getStudentProgressEntries(student, ignoreFilters = false) {
+  const selectedPerformance = ignoreFilters ? "" : progressPerformanceFilter.value;
+  const rangeValue = ignoreFilters ? "all" : progressRangeFilter.value;
+  const rangeStart = getProgressRangeStart(rangeValue);
+  const normalizedStudentName = normalizeSearchText(student.name);
+
+  return data.lessonLogs
+    .flatMap(log => log.studentNotes.map(note => ({
+      log,
+      note
+    })))
+    .filter(({ log, note }) => {
+      if (normalizeSearchText(note.studentName) !== normalizedStudentName) return false;
+      if (selectedPerformance && note.performance !== selectedPerformance) return false;
+      if (rangeStart && parseDateValue(log.date) < rangeStart) return false;
+      return true;
+    })
+    .sort((first, second) => `${second.log.date} ${second.log.startTime}`.localeCompare(`${first.log.date} ${first.log.startTime}`));
+}
+
+function getProgressRangeStart(rangeValue) {
+  if (rangeValue === "all") return null;
+  const days = Number(rangeValue);
+  if (!Number.isFinite(days)) return null;
+  return addDays(new Date(), -days);
+}
+
+function createStudentSnapshotCard(student, entries) {
+  const card = document.createElement("article");
+  const latestEntry = entries[0];
+  const totalLessons = getStudentPaidLessons(student);
+  const lessonsDone = Math.max(0, Number(student.lessonsDone) || 0);
+
+  card.className = "student-progress-card student-snapshot";
+  card.innerHTML = `
+    <div>
+      <span>Student</span>
+      <strong>${escapeHtml(student.name)}</strong>
+    </div>
+    <div>
+      <span>Class</span>
+      <strong>${escapeHtml(student.className)}</strong>
+    </div>
+    <div>
+      <span>Status</span>
+      <strong>${escapeHtml(student.status)}</strong>
+    </div>
+    <div>
+      <span>Attendance</span>
+      <strong>${lessonsDone}/${totalLessons}</strong>
+    </div>
+    <div>
+      <span>Last class</span>
+      <strong>${latestEntry ? formatStoredDate(latestEntry.log.date) : "-"}</strong>
+    </div>
+    <div>
+      <span>Latest performance</span>
+      <strong>${latestEntry ? escapeHtml(latestEntry.note.performance) : "-"}</strong>
+    </div>
+  `;
+  return card;
+}
+
+function createPatternSummaryCard(summary) {
+  const card = document.createElement("article");
+  card.className = "student-progress-card pattern-summary-card";
+  card.append(createProgressSectionTitle("Pattern Summary"));
+  card.append(
+    createPatternLine("Recent performance", summary.recentPerformance),
+    createPatternList("Strengths", summary.strengths),
+    createPatternList("Needs review", summary.needsReview),
+    createPatternList("Teacher attention", summary.teacherAttention)
+  );
+  return card;
+}
+
+function createProgressTimelineCard(entries) {
+  const card = document.createElement("article");
+  card.className = "student-progress-card progress-timeline-card";
+  card.append(createProgressSectionTitle("Progress Timeline"));
+
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted-cell";
+    empty.textContent = "No student notes in this range.";
+    card.append(empty);
+    return card;
+  }
+
+  entries.forEach(({ log, note }) => {
+    const item = document.createElement("div");
+    item.className = "progress-timeline-item";
+    item.innerHTML = `
+      <strong>${formatStoredDate(log.date)} | ${escapeHtml(log.className)} | ${escapeHtml(log.teacher || "No teacher")}</strong>
+      <span>${escapeHtml(note.performance)}</span>
+      <p>${escapeHtml(note.note || "-")}</p>
+    `;
+    card.append(item);
+  });
+
+  return card;
+}
+
+function createParentDraftCard(parentDraft) {
+  const card = document.createElement("article");
+  card.className = "student-progress-card parent-draft-card";
+  card.append(createProgressSectionTitle("Parent Report Draft"));
+  const draft = document.createElement("p");
+  draft.id = "parentDraftText";
+  draft.textContent = parentDraft;
+  card.append(draft);
+  return card;
+}
+
+function createProgressSectionTitle(text) {
+  const title = document.createElement("h3");
+  title.textContent = text;
+  return title;
+}
+
+function createPatternLine(label, value) {
+  const row = document.createElement("div");
+  row.className = "pattern-line";
+  row.innerHTML = `<strong>${label}</strong><span>${value}</span>`;
+  return row;
+}
+
+function createPatternList(label, items) {
+  const block = document.createElement("div");
+  const title = document.createElement("strong");
+  const list = document.createElement("ul");
+
+  block.className = "pattern-list";
+  title.textContent = label;
+  const values = items.length ? items : ["No clear pattern yet"];
+  values.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    list.append(li);
+  });
+
+  block.append(title, list);
+  return block;
+}
+
+function buildStudentPatternSummary(entries) {
+  const performanceCounts = countPerformance(entries);
+  const recentPerformance = describePerformancePattern(performanceCounts, entries.length);
+  const noteText = entries.map(({ note }) => note.note).join(" ").toLowerCase();
+
+  return {
+    recentPerformance,
+    strengths: detectStrengths(noteText),
+    needsReview: detectNeedsReview(noteText),
+    teacherAttention: detectTeacherAttention(entries, noteText)
+  };
+}
+
+function countPerformance(entries) {
+  return entries.reduce((counts, { note }) => {
+    counts[note.performance] = (counts[note.performance] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function describePerformancePattern(counts, total) {
+  if (!total) return "No recent notes yet";
+  const top = Object.entries(counts).sort((first, second) => second[1] - first[1])[0];
+  if (!top) return "No recent notes yet";
+  if (top[0] === "Excellent") return "Mostly Excellent";
+  if (top[0] === "Good") return "Mostly Good";
+  if (top[0] === "Improving") return "Improving steadily";
+  if (top[0] === "Needs Practice") return "Needs extra support";
+  if (top[0] === "Absent") return "Attendance needs attention";
+  return top[0];
+}
+
+function detectStrengths(text) {
+  const strengths = [];
+  if (hasAnyKeyword(text, ["speaking", "confidence", "confident", "answer"])) strengths.push("Speaking confidence");
+  if (hasAnyKeyword(text, ["vocabulary", "words", "remember"])) strengths.push("Vocabulary recall");
+  if (hasAnyKeyword(text, ["listening", "understand"])) strengths.push("Listening comprehension");
+  if (hasAnyKeyword(text, ["participation", "active", "focus"])) strengths.push("Class participation");
+  return strengths;
+}
+
+function detectNeedsReview(text) {
+  const needs = [];
+  if (hasAnyKeyword(text, ["grammar", "tense", "sentence", "structure"])) needs.push("Grammar accuracy");
+  if (hasAnyKeyword(text, ["vocabulary", "words", "spell", "spelling"])) needs.push("Vocabulary");
+  if (hasAnyKeyword(text, ["pronunciation", "sound", "stress"])) needs.push("Pronunciation");
+  if (hasAnyKeyword(text, ["listening", "hear", "understand"])) needs.push("Listening");
+  if (hasAnyKeyword(text, ["homework", "review", "practice"])) needs.push("Home practice");
+  return needs;
+}
+
+function detectTeacherAttention(entries, text) {
+  const attention = [];
+  const needsPracticeCount = entries.filter(({ note }) => note.performance === "Needs Practice").length;
+  const absentCount = entries.filter(({ note }) => note.performance === "Absent").length;
+  if (needsPracticeCount >= 2) attention.push("Needs closer support in class");
+  if (absentCount >= 2) attention.push("Follow up attendance");
+  if (hasAnyKeyword(text, ["tired", "focus", "distracted"])) attention.push("Monitor focus and energy");
+  return attention;
+}
+
+function hasAnyKeyword(text, keywords) {
+  return keywords.some(keyword => text.includes(keyword));
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function buildParentDraft(student, summary, entries) {
+  if (!entries.length) {
+    return `${student.name} does not have enough recent lesson notes yet. Please add student notes in Lesson Log after each class.`;
+  }
+
+  const strengths = summary.strengths.length ? summary.strengths.join(", ").toLowerCase() : "class participation";
+  const needsReview = summary.needsReview.length ? summary.needsReview.join(", ").toLowerCase() : "recent lesson content";
+
+  return `${student.name} has shown ${summary.recentPerformance.toLowerCase()} recently. The main strength is ${strengths}. Please support continued review of ${needsReview} at home.`;
+}
+
+function copyCurrentParentDraft() {
+  const draft = studentProgressBoard.querySelector("#parentDraftText");
+  if (!draft) return;
+
+  navigator.clipboard?.writeText(draft.textContent)
+    .then(() => showToast())
+    .catch(() => {
+      const textArea = document.createElement("textarea");
+      textArea.value = draft.textContent;
+      document.body.append(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      textArea.remove();
+      showToast();
+    });
+}
+
+function getClassDisplayGroups(entries) {
+  return [
+    { key: "ielts", label: "IELTS Classes", entries: entries.filter(({ classItem }) => getClassCategory(classItem.name) === "ielts") },
+    { key: "group", label: "Group Classes", entries: entries.filter(({ classItem }) => getClassCategory(classItem.name) === "group") },
+    { key: "oneOnOne", label: "1on1 Classes", entries: entries.filter(({ classItem }) => getClassCategory(classItem.name) === "oneOnOne") }
+  ];
+}
+
+function getSortedClassEntries(entries) {
+  return [...entries].sort((first, second) => {
+    const categoryDiff = getClassCategoryRank(first.classItem.name) - getClassCategoryRank(second.classItem.name);
+    if (categoryDiff) return categoryDiff;
+    return compareText(first.classItem.name, second.classItem.name);
+  });
+}
+
+function getSortedAttendanceGroups(groups) {
+  return [...groups].sort((first, second) => {
+    const categoryDiff = getClassCategoryRank(first.className) - getClassCategoryRank(second.className);
+    if (categoryDiff) return categoryDiff;
+    return compareText(first.className, second.className);
+  });
+}
+
+function compareStudentEntries(first, second) {
+  const statusDiff = getStudentStatusRank(first.student.status) - getStudentStatusRank(second.student.status);
+  if (statusDiff) return statusDiff;
+  return compareText(first.student.name, second.student.name);
+}
+
+function compareText(first, second) {
+  return normalizeSearchText(first).localeCompare(normalizeSearchText(second), "vi");
+}
+
+function getStudentDisplayGroup(student) {
+  if (student.status === "Temporary pause") return "Temporary Pause Students";
+  if (student.status === "Stopped") return "Stopped Students";
+  return "Active Students";
+}
+
+function getStudentStatusRank(status) {
+  if (status === "Active") return 0;
+  if (status === "Temporary pause") return 1;
+  return 2;
+}
+
+function getClassCategoryLabel(className) {
+  const category = getClassCategory(className);
+  if (category === "ielts") return "IELTS Classes";
+  if (category === "oneOnOne") return "1on1 Classes";
+  return "Group Classes";
+}
+
+function getClassCategoryRank(className) {
+  const category = getClassCategory(className);
+  if (category === "ielts") return 0;
+  if (category === "group") return 1;
+  return 2;
+}
+
+function getClassCategory(className) {
+  const normalizedName = normalizeSearchText(className);
+  if (normalizedName.includes("ielts")) return "ielts";
+  if (normalizedName.includes("1on1") || normalizedName.includes("1-1") || normalizedName.includes("one on one")) return "oneOnOne";
+  return "group";
+}
+
+function clearStudentFilters() {
+  filterClass.value = "";
+  filterStatus.value = "";
+  filterDueDate.value = "";
+  filterDueMonth.value = "";
+  filterDueYear.value = "";
+  renderStudents();
+}
+
+render();

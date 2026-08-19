@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mandy English Student Management</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Mandy English</p>
+      <h1>Student Management</h1>
+    </div>
+    <div class="header-actions">
+      <button id="exportBackup" class="ghost-button" type="button">Export Backup</button>
+      <button id="importBackup" class="ghost-button" type="button">Import Backup</button>
+      <input id="importBackupFile" class="hidden-file-input" type="file" accept="application/json,.json">
+      <button id="resetData" class="ghost-button developer-only-action" type="button">Reset sample data</button>
+      <button id="saveData" class="primary-button" type="button">Save changes</button>
+    </div>
+  </header>
+
+  <main>
+    <nav class="tabs" aria-label="Main sections">
+      <button class="tab-button active" data-tab="scheduleTab" type="button">Schedule</button>
+      <button class="tab-button" data-tab="dashboardTab" type="button">Dashboard</button>
+      <button class="tab-button" data-tab="financeTab" type="button">Finance</button>
+      <button class="tab-button" data-tab="studentsTab" type="button">Student List</button>
+      <button class="tab-button" data-tab="classesTab" type="button">Class List</button>
+      <button class="tab-button" data-tab="attendanceTab" type="button">Attendance</button>
+      <button class="tab-button" data-tab="lessonLogTab" type="button">Lesson Log</button>
+      <button class="tab-button" data-tab="studentProgressTab" type="button">Student Progress</button>
+      <button class="tab-button" data-tab="tuitionSlipTab" type="button">Tuition Slip</button>
+    </nav>
+
+    <section id="dashboardTab" class="tab-panel">
+      <div class="dashboard" aria-label="Student dashboard">
+        <article class="metric metric-active">
+          <span>Active students</span>
+          <strong id="activeCount">0</strong>
+        </article>
+        <article class="metric metric-class">
+          <span>Active classes</span>
+          <strong id="activeClassCount">0</strong>
+        </article>
+        <article class="metric metric-pause">
+          <span>Temporary pause</span>
+          <strong id="pauseCount">0</strong>
+        </article>
+        <article class="metric metric-stopped">
+          <span>Stopped students</span>
+          <strong id="stoppedCount">0</strong>
+        </article>
+      </div>
+      <section class="assistant-panel" aria-label="Dashboard assistant">
+        <div class="assistant-header">
+          <div>
+            <p class="eyebrow">Assistant</p>
+            <h2>Quick Support</h2>
+          </div>
+          <span>Ask about students, classes, fees, or adding data</span>
+        </div>
+        <div id="assistantMessages" class="assistant-messages" aria-live="polite">
+          <div class="assistant-message assistant-reply">Hi, I can help you quickly check students, classes, fees, and open the Add Student form.</div>
+        </div>
+        <form id="assistantForm" class="assistant-form">
+          <input id="assistantInput" type="text" placeholder="Try: Stage 4 có bao nhiêu học viên? / thêm học viên An lớp Stage 4">
+          <button class="primary-button" type="submit">Send</button>
+        </form>
+      </section>
+    </section>
+
+    <section id="financeTab" class="panel tab-panel">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Revenue</p>
+          <h2>Finance</h2>
+        </div>
+        <div class="section-actions finance-date-actions">
+          <label>
+            <span>View</span>
+            <select id="financeViewMode">
+              <option value="day">Day</option>
+              <option value="custom">Custom range</option>
+            </select>
+          </label>
+          <label>
+            <span>Revenue date</span>
+            <input id="financeDate" type="date">
+          </label>
+          <label id="financeStartField" class="hidden-field">
+            <span>From</span>
+            <input id="financeStartDate" type="date">
+          </label>
+          <label id="financeEndField" class="hidden-field">
+            <span>To</span>
+            <input id="financeEndDate" type="date">
+          </label>
+          <button id="financeToday" class="ghost-button" type="button">Today</button>
+        </div>
+      </div>
+      <div class="finance-quick-ranges" aria-label="Finance quick ranges">
+        <button class="ghost-button" type="button" data-finance-range="today">Today</button>
+        <button class="ghost-button" type="button" data-finance-range="yesterday">Yesterday</button>
+        <button class="ghost-button" type="button" data-finance-range="this-week">This week</button>
+        <button class="ghost-button" type="button" data-finance-range="last-week">Last week</button>
+        <button class="ghost-button" type="button" data-finance-range="this-month">This month</button>
+        <button class="ghost-button" type="button" data-finance-range="last-month">Last month</button>
+      </div>
+
+      <div class="finance-overview" aria-label="Finance overview">
+        <article class="finance-metric">
+          <span id="financeRevenueLabel">Revenue</span>
+          <strong id="financeDailyRevenue">0 VND</strong>
+        </article>
+        <article class="finance-metric">
+          <span id="financeCostLabel">Cost</span>
+          <strong id="financeDailyCost">0 VND</strong>
+        </article>
+        <article class="finance-metric finance-profit">
+          <span>Net Profit</span>
+          <strong id="financeNetProfit">0 VND</strong>
+        </article>
+        <article class="finance-metric">
+          <span>Completed Lessons</span>
+          <strong id="financeCompletedLessons">0</strong>
+        </article>
+        <article class="finance-metric finance-projected">
+          <span id="financeProjectedLabel">Scheduled Revenue</span>
+          <strong id="financeProjectedRevenue">0 VND</strong>
+        </article>
+      </div>
+
+      <section class="finance-section">
+        <div>
+          <p class="eyebrow">Settings</p>
+          <h3>Class Fee / Student / Lesson</h3>
+        </div>
+        <div class="table-wrap finance-table-wrap">
+          <table class="finance-settings-table">
+            <thead>
+              <tr>
+                <th>Class</th>
+                <th>Active paid students</th>
+                <th>Fee / student / lesson</th>
+                <th>Estimated class revenue</th>
+              </tr>
+            </thead>
+            <tbody id="financeClassFeeRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="finance-section">
+        <div>
+          <p class="eyebrow">Scheduled lessons</p>
+          <h3 id="financeProjectedTitle">Scheduled Revenue Estimate</h3>
+        </div>
+        <div class="table-wrap finance-table-wrap">
+          <table class="finance-projected-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Class</th>
+                <th>Time</th>
+                <th>Teacher</th>
+                <th>Paid students</th>
+                <th>Projected Revenue</th>
+              </tr>
+            </thead>
+            <tbody id="financeProjectedRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="finance-section">
+        <div>
+          <p class="eyebrow">Done lessons</p>
+          <h3 id="financeDetailTitle">Revenue Detail</h3>
+        </div>
+        <div class="table-wrap finance-table-wrap">
+          <table class="finance-detail-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Class</th>
+                <th>Time</th>
+                <th>Teacher</th>
+                <th>Paid students</th>
+                <th>Revenue</th>
+                <th>Cost</th>
+                <th>Net Profit</th>
+              </tr>
+            </thead>
+            <tbody id="financeRevenueRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section id="studentsTab" class="panel tab-panel">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Students</p>
+          <h2>Student List</h2>
+        </div>
+        <div class="section-actions">
+          <a class="ghost-link" href="student-list-template.csv" download>Download CSV form</a>
+          <button id="addStudent" class="primary-button" type="button">Add student</button>
+        </div>
+      </div>
+      <div class="filters" aria-label="Student filters">
+        <label>
+          <span>Filter by class</span>
+          <select id="filterClass">
+            <option value="">All classes</option>
+          </select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select id="filterStatus">
+            <option value="">All status</option>
+            <option value="Active">Active</option>
+            <option value="Temporary pause">Temporary pause</option>
+            <option value="Stopped">Stopped</option>
+          </select>
+        </label>
+        <label>
+          <span>Due date</span>
+          <input id="filterDueDate" type="date">
+        </label>
+        <label>
+          <span>Due month</span>
+          <input id="filterDueMonth" type="month">
+        </label>
+        <label>
+          <span>Due year</span>
+          <input id="filterDueYear" type="number" min="2000" max="2100" placeholder="2026">
+        </label>
+        <button id="clearFilters" class="ghost-button" type="button">Clear filters</button>
+      </div>
+      <div class="table-wrap">
+        <table class="student-table">
+          <thead>
+            <tr>
+              <th>STT</th>
+              <th>Student Name</th>
+              <th>Class</th>
+              <th>Contact</th>
+              <th>Payment Type</th>
+              <th>Lessons Done</th>
+              <th>Fee Reminder</th>
+              <th>Last Payment Date</th>
+              <th>Next Due Date</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="studentRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="classesTab" class="panel tab-panel">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Classes</p>
+          <h2>Class List</h2>
+        </div>
+      </div>
+      <div class="filters compact-filters" aria-label="Class filters">
+        <label>
+          <span>Filter by class</span>
+          <select id="classListFilter">
+            <option value="">All classes</option>
+          </select>
+        </label>
+      </div>
+      <div class="table-wrap">
+        <table class="class-table">
+          <thead>
+            <tr>
+              <th>Class Name</th>
+              <th>Students</th>
+              <th>Schedule</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="classRows"></tbody>
+        </table>
+      </div>
+      <div class="stopped-classes">
+        <h3>Stopped Classes</h3>
+        <div class="table-wrap">
+          <table class="class-table">
+            <thead>
+              <tr>
+                <th>Class Name</th>
+                <th>Students</th>
+                <th>Schedule</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="stoppedClassRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="scheduleTab" class="panel tab-panel active">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Weekly</p>
+          <h2>Schedule</h2>
+        </div>
+        <div class="section-actions">
+          <div class="week-picker" aria-label="Choose schedule week">
+            <button id="previousWeek" class="week-nav-button" type="button" aria-label="Previous week">&lt;</button>
+            <label>
+              <span>Week</span>
+              <select id="scheduleWeekSelect"></select>
+            </label>
+            <button id="nextWeek" class="week-nav-button" type="button" aria-label="Next week">&gt;</button>
+            <button id="currentWeek" class="ghost-button" type="button">Current week</button>
+          </div>
+          <button id="exportScheduleCsv" class="ghost-button" type="button">Export CSV</button>
+          <button id="printSchedule" class="ghost-button" type="button">Print A4</button>
+        </div>
+      </div>
+      <div id="weeklySchedule" class="weekly-schedule" aria-label="Weekly class schedule"></div>
+    </section>
+
+    <section id="attendanceTab" class="panel tab-panel">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Attendance</p>
+          <h2>Attendance</h2>
+        </div>
+      </div>
+      <div class="filters compact-filters" aria-label="Attendance filters">
+        <label>
+          <span>Filter by class</span>
+          <select id="attendanceClassFilter">
+            <option value="">All classes</option>
+          </select>
+        </label>
+      </div>
+      <div id="attendanceBoard" class="attendance-board" aria-label="Attendance board"></div>
+    </section>
+
+    <section id="lessonLogTab" class="panel tab-panel">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Teacher notes</p>
+          <h2>Lesson Log</h2>
+        </div>
+      </div>
+      <div class="filters lesson-log-filters" aria-label="Lesson log filters">
+        <label>
+          <span>Filter by class</span>
+          <select id="lessonLogClassFilter">
+            <option value="">All classes</option>
+          </select>
+        </label>
+        <label>
+          <span>Teacher</span>
+          <input id="lessonLogTeacherFilter" type="text" placeholder="Teacher name">
+        </label>
+        <label>
+          <span>Date</span>
+          <input id="lessonLogDateFilter" type="date">
+        </label>
+        <button id="clearLessonLogFilters" class="ghost-button" type="button">Clear filters</button>
+      </div>
+      <div id="lessonLogBoard" class="lesson-log-board" aria-label="Lesson log history"></div>
+    </section>
+
+    <section id="studentProgressTab" class="panel tab-panel">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Student notes</p>
+          <h2>Student Progress</h2>
+        </div>
+        <div class="section-actions">
+          <button id="copyParentDraft" class="ghost-button" type="button">Copy parent draft</button>
+        </div>
+      </div>
+      <div class="filters student-progress-filters" aria-label="Student progress filters">
+        <label>
+          <span>Student</span>
+          <select id="progressStudentSelect"></select>
+        </label>
+        <label>
+          <span>Time range</span>
+          <select id="progressRangeFilter">
+            <option value="14">Last 2 weeks</option>
+            <option value="30">Last 1 month</option>
+            <option value="90">Last 3 months</option>
+            <option value="all">All time</option>
+          </select>
+        </label>
+        <label>
+          <span>Performance</span>
+          <select id="progressPerformanceFilter">
+            <option value="">All performance</option>
+            <option value="Excellent">Excellent</option>
+            <option value="Good">Good</option>
+            <option value="Improving">Improving</option>
+            <option value="Needs Practice">Needs Practice</option>
+            <option value="Absent">Absent</option>
+          </select>
+        </label>
+      </div>
+      <div id="studentProgressBoard" class="student-progress-board" aria-label="Student progress board"></div>
+    </section>
+
+    <section id="tuitionSlipTab" class="panel tab-panel">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">Payment document</p>
+          <h2>Tuition Slip</h2>
+        </div>
+        <div class="section-actions">
+          <button id="printTuitionSlip" class="primary-button" type="button">Print / Save PDF</button>
+        </div>
+      </div>
+
+      <div class="tuition-slip-workspace">
+        <div class="filters tuition-slip-controls" aria-label="Tuition slip controls">
+          <label>
+            <span>Student</span>
+            <select id="tuitionStudentSelect"></select>
+          </label>
+          <label>
+            <span>Fee Type</span>
+            <select id="tuitionFeeType">
+              <option value="Monthly">Monthly</option>
+              <option value="Course">Course</option>
+            </select>
+          </label>
+          <label>
+            <span>Student Name</span>
+            <input id="tuitionStudentName" type="text">
+          </label>
+          <label>
+            <span>Package Lessons</span>
+            <input id="tuitionPackageLessons" type="number" min="0" step="1">
+          </label>
+          <label>
+            <span>Total Fee</span>
+            <input id="tuitionTotalFee" type="text" placeholder="0 VND">
+          </label>
+          <label class="tuition-comment-control">
+            <span>Learning Progress Note</span>
+            <textarea id="tuitionComment" rows="3"></textarea>
+          </label>
+        </div>
+
+        <article id="tuitionSlipPreview" class="tuition-slip-preview" aria-label="Tuition slip preview">
+          <header class="tuition-slip-header">
+            <div class="tuition-logo">
+              <img src="assets/mandy-logo.png" alt="Mandy English logo">
+              <div>
+                <strong>Mandy English</strong>
+                <small>Support: 0765 347 776</small>
+              </div>
+            </div>
+            <div>
+              <h3>TUITION SLIP</h3>
+            </div>
+          </header>
+
+          <div class="tuition-slip-body">
+            <div class="slip-info-grid">
+              <div class="slip-info-row">
+                <span>Student</span>
+                <strong id="slipStudentName">-</strong>
+              </div>
+              <div class="slip-info-row">
+                <span>Fee Type</span>
+                <strong id="slipFeeType">Monthly</strong>
+              </div>
+              <div class="slip-info-row">
+                <span>Package Lessons</span>
+                <strong id="slipLessonCount">0 lessons</strong>
+              </div>
+            </div>
+
+            <div class="slip-total-box">
+              <span>Total Tuition Fee</span>
+              <strong id="slipTotalFee">0 VND</strong>
+            </div>
+
+            <section class="slip-comment">
+              <h4>Learning Progress Note</h4>
+              <p id="slipComment">-</p>
+            </section>
+
+            <footer class="slip-payment">
+              <p>Mandyenglish.com</p>
+              <div class="slip-qr-card">
+                <span>Payment Code</span>
+                <div id="slipQrPreview" class="slip-qr-placeholder">
+                  <img src="assets/payment-qr.png" alt="Payment QR">
+                </div>
+                <strong>ACB</strong>
+                <b>899556</b>
+                <small>Nguyen Le Minh</small>
+              </div>
+            </footer>
+          </div>
+        </article>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="studentModal" class="modal-backdrop" aria-hidden="true">
+    <form id="studentForm" class="modal" aria-labelledby="studentModalTitle">
+      <div class="modal-header">
+        <div>
+          <p id="studentModalEyebrow" class="eyebrow">New student</p>
+          <h2 id="studentModalTitle">Add Student</h2>
+        </div>
+        <button id="closeStudentModal" class="icon-button" type="button" aria-label="Close">x</button>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          <span>Student Name</span>
+          <input id="newStudentName" name="name" type="text" required>
+        </label>
+        <label>
+          <span>Class</span>
+          <select id="newStudentClassSelect"></select>
+        </label>
+        <label id="newClassField" class="hidden-field">
+          <span>New Class Name</span>
+          <input id="newStudentClassNew" type="text" list="classOptions">
+        </label>
+        <label>
+          <span>Contact</span>
+          <input id="newStudentContact" name="contact" type="text">
+        </label>
+        <label>
+          <span>Payment Type</span>
+          <select id="newStudentPayment" name="paymentType">
+            <option value="Monthly">Monthly</option>
+            <option value="Monthly Dis (%)">Monthly Dis (%)</option>
+            <option value="Course">Course</option>
+            <option value="Course Dis (%)">Course Dis (%)</option>
+            <option value="Free">Free</option>
+          </select>
+        </label>
+        <label id="discountField" class="hidden-field">
+          <span>Discount (%)</span>
+          <input id="newStudentDiscount" name="discountPercent" type="number" min="0" max="100" step="1" value="0">
+        </label>
+        <label>
+          <span>Lessons Done</span>
+          <input id="newStudentLessons" name="lessonsDone" type="number" min="0" step="1" value="0">
+        </label>
+        <label>
+          <span>Total Lessons</span>
+          <input id="newStudentTotalLessons" name="totalLessons" type="number" min="1" step="1" value="8">
+        </label>
+        <label>
+          <span>Paid Lessons</span>
+          <input id="newStudentPaidLessons" name="paidLessons" type="number" min="1" step="1" value="8">
+        </label>
+        <label>
+          <span>Last Payment Date</span>
+          <input id="newStudentLastPayment" name="lastPaymentDate" type="date">
+        </label>
+        <label>
+          <span>Next Due Date</span>
+          <input id="newStudentNextDue" name="nextDueDate" type="date">
+        </label>
+        <label>
+          <span>Status</span>
+          <select id="newStudentStatus" name="status">
+            <option value="Active">Active</option>
+            <option value="Temporary pause">Temporary pause</option>
+            <option value="Stopped">Stopped</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button id="deleteStudentModal" class="danger-button" type="button">Delete student</button>
+        <div class="modal-save-actions">
+          <button id="cancelStudentModal" class="ghost-button" type="button">Cancel</button>
+          <button class="primary-button" type="submit">Save student</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div id="scheduleModal" class="modal-backdrop" aria-hidden="true">
+    <form id="scheduleForm" class="modal compact-modal" aria-labelledby="scheduleModalTitle">
+      <div class="modal-header">
+        <div>
+          <p id="scheduleModalEyebrow" class="eyebrow">Class schedule</p>
+          <h2 id="scheduleModalTitle">Choose Schedule</h2>
+        </div>
+        <button id="closeScheduleModal" class="icon-button" type="button" aria-label="Close">x</button>
+      </div>
+
+      <div id="scheduleRows" class="schedule-picker"></div>
+
+      <div class="schedule-scope" aria-label="Schedule apply scope">
+        <p>Apply schedule change</p>
+        <label>
+          <input type="radio" name="scheduleApplyScope" value="from-week" checked>
+          <span>From selected week forward</span>
+        </label>
+        <label>
+          <input type="radio" name="scheduleApplyScope" value="all-weeks">
+          <span>Apply to all weeks</span>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <div class="modal-save-actions">
+          <button id="addScheduleSlot" class="ghost-button" type="button">Add time</button>
+          <button id="stopClassSchedule" class="danger-button show" type="button">Stop from week</button>
+        </div>
+        <div class="modal-save-actions">
+          <button id="cancelScheduleModal" class="ghost-button" type="button">Cancel</button>
+          <button class="primary-button" type="submit">Save schedule</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div id="paymentModal" class="modal-backdrop" aria-hidden="true">
+    <form id="paymentForm" class="modal compact-modal" aria-labelledby="paymentModalTitle">
+      <div class="modal-header">
+        <div>
+          <p id="paymentModalEyebrow" class="eyebrow">Payment</p>
+          <h2 id="paymentModalTitle">Add Payment</h2>
+        </div>
+        <button id="closePaymentModal" class="icon-button" type="button" aria-label="Close">x</button>
+      </div>
+
+      <div id="paymentStudentSummary" class="lesson-log-summary"></div>
+
+      <div class="form-grid payment-form-grid">
+        <label>
+          <span>Payment Date</span>
+          <input id="paymentDate" type="date" required>
+        </label>
+        <label>
+          <span>Package</span>
+          <select id="paymentPackage">
+            <option value="Monthly">Monthly (+8 lessons)</option>
+            <option value="Course">Course (+24 lessons)</option>
+            <option value="Custom">Custom lessons</option>
+          </select>
+        </label>
+        <label>
+          <span>Lessons Added</span>
+          <input id="paymentLessons" type="number" min="1" step="1" value="8">
+        </label>
+        <label>
+          <span>Note</span>
+          <input id="paymentNote" type="text" placeholder="Optional">
+        </label>
+      </div>
+
+      <div class="payment-history-section">
+        <h3>Payment History</h3>
+        <div id="paymentHistoryList" class="payment-history-list"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="cancelPaymentModal" class="ghost-button" type="button">Cancel</button>
+        <button class="primary-button" type="submit">Save payment</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="attendanceDateModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal compact-modal" role="dialog" aria-labelledby="attendanceDateModalTitle">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Attendance date</p>
+          <h2 id="attendanceDateModalTitle">Choose Date</h2>
+        </div>
+        <button id="closeAttendanceDateModal" class="icon-button" type="button" aria-label="Close">x</button>
+      </div>
+
+      <label class="date-modal-field">
+        <span>Date</span>
+        <input id="attendanceDateInput" type="date">
+      </label>
+
+      <div class="modal-actions">
+        <button id="clearAttendanceDate" class="danger-button show" type="button">Clear</button>
+        <div class="modal-save-actions">
+          <button id="cancelAttendanceDate" class="ghost-button" type="button">Cancel</button>
+          <button id="applyAttendanceDate" class="primary-button" type="button">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="lessonLogModal" class="modal-backdrop" aria-hidden="true">
+    <form id="lessonLogForm" class="modal lesson-log-modal" aria-labelledby="lessonLogModalTitle">
+      <div class="modal-header">
+        <div>
+          <p id="lessonLogModalEyebrow" class="eyebrow">Lesson log</p>
+          <h2 id="lessonLogModalTitle">Save Lesson Log</h2>
+        </div>
+        <button id="closeLessonLogModal" class="icon-button" type="button" aria-label="Close">x</button>
+      </div>
+
+      <div id="lessonLogSessionSummary" class="lesson-log-summary"></div>
+
+      <div class="lesson-log-fields">
+        <label>
+          <span>What did you teach today?</span>
+          <textarea id="lessonLogTaught" rows="3"></textarea>
+        </label>
+        <label>
+          <span>Homework</span>
+          <textarea id="lessonLogHomework" rows="2"></textarea>
+        </label>
+        <label>
+          <span>General note</span>
+          <textarea id="lessonLogNote" rows="2"></textarea>
+        </label>
+      </div>
+
+      <div class="student-note-section">
+        <h3>Student notes</h3>
+        <div id="lessonLogStudentNotes" class="student-note-list"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="cancelLessonLogModal" class="ghost-button" type="button">Cancel</button>
+        <button class="primary-button" type="submit">Save log & mark done</button>
+      </div>
+    </form>
+  </div>
+
+  <datalist id="classOptions"></datalist>
+  <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
+  <script src="script.js"></script>
+</body>
+</html>
