@@ -65,8 +65,31 @@ body {
   gap: 12px;
 }
 
+.current-user-pill {
+  display: grid;
+  gap: 2px;
+  min-width: 120px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--green-soft);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.current-user-pill span {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
 .hidden-file-input {
   display: none;
+}
+
+.role-hidden {
+  display: none !important;
 }
 
 .developer-only-action {
@@ -108,6 +131,61 @@ main {
   display: block;
 }
 
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: none;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(rgba(247, 248, 244, 0.9), rgba(247, 248, 244, 0.95)),
+    #f7f8f4;
+}
+
+.auth-overlay.open {
+  display: grid;
+}
+
+.auth-card {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 16px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.auth-card h2 {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: 0;
+}
+
+.auth-card label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.auth-help {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.auth-error {
+  min-height: 18px;
+  margin: 0;
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .dashboard {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -122,6 +200,17 @@ main {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.drive-sync-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
   box-shadow: var(--shadow);
 }
 
@@ -152,6 +241,32 @@ main {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfcfa;
+}
+
+.drive-sync-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(180px, 0.6fr);
+  gap: 12px;
+}
+
+.drive-sync-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.drive-sync-grid input {
+  width: 100%;
+  min-height: 42px;
+}
+
+.drive-sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 .assistant-message {
@@ -1458,37 +1573,70 @@ button {
 
 .tuition-slip-body {
   display: grid;
-  gap: 24px;
-  padding: 30px;
+  gap: 14px;
+  padding: 24px 28px 26px;
 }
 
-.slip-info-grid {
+.slip-confirmation-title {
+  text-align: center;
+}
+
+.slip-confirmation-title h4 {
+  margin: 0;
+  color: #075d53;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.slip-section {
   display: grid;
-  gap: 12px;
+  gap: 8px;
+  padding: 13px 14px;
+  border: 1px solid #dce9e5;
+  border-radius: 12px;
+  background: #fbfffd;
+}
+
+.slip-section h4 {
+  margin: 0 0 2px;
+  color: #075d53;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .slip-info-row {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 12px;
+  padding-bottom: 7px;
   border-bottom: 1px dashed #cfdfdb;
-  font-size: 19px;
+  font-size: 15px;
+}
+
+.slip-info-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .slip-info-row span {
   color: #61716d;
+  font-weight: 700;
 }
 
 .slip-info-row strong {
   text-align: right;
-  font-size: 21px;
+  font-size: 16px;
 }
 
 .slip-total-box {
-  padding: 22px;
-  border: 2px solid #8fd0c5;
-  border-radius: 14px;
+  margin-top: 2px;
+  padding: 16px;
+  border: 2px solid #76c6ba;
+  border-radius: 12px;
   background: #effaf7;
   text-align: center;
 }
@@ -1503,9 +1651,9 @@ button {
 
 .slip-total-box strong {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
   color: #075d53;
-  font-size: 42px;
+  font-size: 34px;
   line-height: 1.1;
 }
 
@@ -1524,12 +1672,12 @@ button {
 
 .slip-comment p {
   margin: 0;
-  padding: 16px;
-  border: 1px solid #e8d9aa;
+  padding: 12px 14px;
+  border: 1px solid #dce9e5;
   border-radius: 12px;
-  background: #fffaf0;
+  background: #f8fcfa;
   color: #4b514f;
-  font-size: 18px;
+  font-size: 13px;
   line-height: 1.5;
   text-align: left;
 }
@@ -1537,7 +1685,7 @@ button {
 .slip-payment {
   display: grid;
   justify-items: center;
-  gap: 14px;
+  gap: 10px;
   padding-top: 6px;
   border-top: 1px solid #e7d8d3;
 }
@@ -1545,16 +1693,16 @@ button {
 .slip-payment > p {
   margin: 0;
   color: #8a7d7d;
-  font-size: 18px;
+  font-size: 15px;
   font-style: italic;
 }
 
 .slip-qr-card {
   display: grid;
   justify-items: center;
-  gap: 7px;
-  width: min(300px, 100%);
-  padding: 12px;
+  gap: 6px;
+  width: min(240px, 100%);
+  padding: 10px;
   border: 2px dashed #4fb7a6;
   border-radius: 14px;
   background: #fffdfa;
@@ -1569,8 +1717,8 @@ button {
 
 .slip-qr-placeholder {
   display: grid;
-  width: 258px;
-  height: 258px;
+  width: 200px;
+  height: 200px;
   place-items: center;
   border: 1px solid #dce9e5;
   border-radius: 10px;
@@ -2036,13 +2184,22 @@ textarea:focus {
   }
 
   .assistant-header,
-  .assistant-form {
+  .assistant-form,
+  .drive-sync-grid {
     grid-template-columns: 1fr;
   }
 
   .assistant-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .drive-sync-actions {
+    justify-content: stretch;
+  }
+
+  .drive-sync-actions button {
+    flex: 1 1 160px;
   }
 
   .panel {
@@ -2103,6 +2260,8 @@ textarea:focus {
   #lessonLogTab,
   #studentProgressTab,
   #tuitionSlipTab,
+  #authOverlay,
+  #passwordResetModal,
   .modal-backdrop,
   .toast {
     display: none !important;
@@ -2195,32 +2354,42 @@ textarea:focus {
     padding: 4mm 6mm 5mm;
   }
 
-  body.printing-tuition-slip .slip-info-grid {
-    gap: 2mm;
+  body.printing-tuition-slip .slip-confirmation-title h4 {
+    font-size: 13pt;
+  }
+
+  body.printing-tuition-slip .slip-section {
+    gap: 1.4mm;
+    padding: 2.2mm 3mm;
+    border-radius: 3mm;
+  }
+
+  body.printing-tuition-slip .slip-section h4 {
+    font-size: 8pt;
   }
 
   body.printing-tuition-slip .slip-info-row {
-    padding-bottom: 1.6mm;
-    font-size: 10pt;
+    padding-bottom: 1.1mm;
+    font-size: 9pt;
     line-height: 1.1;
   }
 
   body.printing-tuition-slip .slip-info-row strong {
-    font-size: 11pt;
+    font-size: 9.5pt;
   }
 
   body.printing-tuition-slip .slip-total-box {
-    padding: 3.3mm;
-    border-radius: 4mm;
+    padding: 2.4mm;
+    border-radius: 3mm;
   }
 
   body.printing-tuition-slip .slip-total-box span {
-    font-size: 9.5pt;
+    font-size: 8.5pt;
   }
 
   body.printing-tuition-slip .slip-total-box strong {
     margin-top: 1mm;
-    font-size: 21pt;
+    font-size: 18pt;
   }
 
   body.printing-tuition-slip .slip-comment h4 {
@@ -2229,12 +2398,12 @@ textarea:focus {
   }
 
   body.printing-tuition-slip .slip-comment p {
-    max-height: 22mm;
-    min-height: 13mm;
+    max-height: 16mm;
+    min-height: 9mm;
     overflow: hidden;
-    padding: 2.5mm;
-    border-radius: 4mm;
-    font-size: 10pt;
+    padding: 2mm;
+    border-radius: 3mm;
+    font-size: 8.5pt;
     line-height: 1.25;
   }
 
@@ -2252,15 +2421,15 @@ textarea:focus {
     grid-template-columns: 1fr;
     justify-items: center;
     gap: 1mm;
-    width: 59mm;
+    width: 48mm;
     padding: 2mm;
     border-radius: 4mm;
   }
 
   body.printing-tuition-slip .slip-qr-placeholder {
     grid-row: auto;
-    width: 51mm;
-    height: 51mm;
+    width: 40mm;
+    height: 40mm;
     border-radius: 3mm;
   }
 

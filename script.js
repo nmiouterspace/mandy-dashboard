@@ -1,7 +1,37 @@
 ﻿const storageKey = "mandyEnglishStudentSystem";
 
 const prePaymentHistoryBackupKey = "mandyEnglishStudentSystemBackupBeforePaymentHistory20260701";
+const driveSyncSettingsKey = "mandyEnglishDriveSyncSettings";
+const userAccountsKey = "mandyEnglishUserAccounts";
+const activeUserKey = "mandyEnglishActiveUser";
 const preClassRenameBackupKey = "mandyEnglishStudentSystemBackupBeforeClassRename20260722";
+
+const defaultUserAccounts = [
+  { username: "Minh", password: "123", role: "admin", mustResetPassword: true },
+  { username: "PChau", password: "123", role: "teacher", mustResetPassword: true },
+  { username: "NChau", password: "123", role: "staff", mustResetPassword: true }
+];
+
+const roleLabels = {
+  admin: "Admin",
+  teacher: "Teacher",
+  staff: "Staff"
+};
+
+const rolePermissions = {
+  admin: {
+    tabs: ["scheduleTab", "dashboardTab", "financeTab", "studentsTab", "classesTab", "attendanceTab", "lessonLogTab", "studentProgressTab", "tuitionSlipTab"],
+    actions: ["all"]
+  },
+  teacher: {
+    tabs: ["scheduleTab", "attendanceTab", "lessonLogTab", "studentProgressTab"],
+    actions: ["schedule.view", "schedule.teacher", "schedule.done", "attendance.view", "attendance.edit", "lessonLog.view", "lessonLog.edit", "studentProgress.view"]
+  },
+  staff: {
+    tabs: ["scheduleTab", "dashboardTab", "studentsTab", "classesTab", "attendanceTab", "lessonLogTab", "studentProgressTab", "tuitionSlipTab"],
+    actions: ["schedule.view", "students.view", "students.edit", "payments.edit", "classes.view", "attendance.view", "lessonLog.view", "studentProgress.view", "tuitionSlip.view", "tuitionSlip.edit", "backup.export", "drive.load"]
+  }
+};
 
 const starterData = {
   students: [
@@ -58,6 +88,7 @@ const starterData = {
 backupLocalStorageDataOnce();
 let data = loadData();
 normalizeData();
+let currentUser = loadActiveUser();
 const recoveredTransferredAttendanceOnLoad = recoverTransferredStudentAttendance();
 syncClassStudents();
 applyUserRecordUpdates();
@@ -114,6 +145,27 @@ const toast = document.querySelector("#toast");
 const exportBackup = document.querySelector("#exportBackup");
 const importBackup = document.querySelector("#importBackup");
 const importBackupFile = document.querySelector("#importBackupFile");
+const loadDriveData = document.querySelector("#loadDriveData");
+const saveDriveData = document.querySelector("#saveDriveData");
+const loadDriveDataDashboard = document.querySelector("#loadDriveDataDashboard");
+const saveDriveDataDashboard = document.querySelector("#saveDriveDataDashboard");
+const saveDriveSettings = document.querySelector("#saveDriveSettings");
+const driveSyncUrl = document.querySelector("#driveSyncUrl");
+const driveSyncToken = document.querySelector("#driveSyncToken");
+const driveSyncStatus = document.querySelector("#driveSyncStatus");
+const currentUserPill = document.querySelector("#currentUserPill");
+const resetOwnPassword = document.querySelector("#resetOwnPassword");
+const signOut = document.querySelector("#signOut");
+const authOverlay = document.querySelector("#authOverlay");
+const loginForm = document.querySelector("#loginForm");
+const loginUsername = document.querySelector("#loginUsername");
+const loginPassword = document.querySelector("#loginPassword");
+const loginError = document.querySelector("#loginError");
+const passwordResetModal = document.querySelector("#passwordResetModal");
+const passwordResetForm = document.querySelector("#passwordResetForm");
+const newPassword = document.querySelector("#newPassword");
+const confirmNewPassword = document.querySelector("#confirmNewPassword");
+const passwordResetError = document.querySelector("#passwordResetError");
 const studentModal = document.querySelector("#studentModal");
 const studentForm = document.querySelector("#studentForm");
 const newStudentClassSelect = document.querySelector("#newStudentClassSelect");
@@ -156,16 +208,26 @@ const progressPerformanceFilter = document.querySelector("#progressPerformanceFi
 const studentProgressBoard = document.querySelector("#studentProgressBoard");
 const copyParentDraft = document.querySelector("#copyParentDraft");
 const tuitionStudentSelect = document.querySelector("#tuitionStudentSelect");
-const tuitionFeeType = document.querySelector("#tuitionFeeType");
 const tuitionStudentName = document.querySelector("#tuitionStudentName");
-const tuitionPackageLessons = document.querySelector("#tuitionPackageLessons");
+const tuitionCourseName = document.querySelector("#tuitionCourseName");
+const tuitionPackage = document.querySelector("#tuitionPackage");
+const tuitionStartDate = document.querySelector("#tuitionStartDate");
+const tuitionEndDate = document.querySelector("#tuitionEndDate");
+const tuitionCourseFee = document.querySelector("#tuitionCourseFee");
+const tuitionDiscount = document.querySelector("#tuitionDiscount");
 const tuitionTotalFee = document.querySelector("#tuitionTotalFee");
+const tuitionDueDate = document.querySelector("#tuitionDueDate");
 const tuitionComment = document.querySelector("#tuitionComment");
 const printTuitionSlip = document.querySelector("#printTuitionSlip");
 const slipStudentName = document.querySelector("#slipStudentName");
-const slipFeeType = document.querySelector("#slipFeeType");
-const slipLessonCount = document.querySelector("#slipLessonCount");
+const slipCourseName = document.querySelector("#slipCourseName");
+const slipPackage = document.querySelector("#slipPackage");
+const slipStartDate = document.querySelector("#slipStartDate");
+const slipEndDate = document.querySelector("#slipEndDate");
+const slipCourseFee = document.querySelector("#slipCourseFee");
+const slipDiscount = document.querySelector("#slipDiscount");
 const slipTotalFee = document.querySelector("#slipTotalFee");
+const slipDueDate = document.querySelector("#slipDueDate");
 const slipComment = document.querySelector("#slipComment");
 const slipQrPreview = document.querySelector("#slipQrPreview");
 const scheduleWeekSelect = document.querySelector("#scheduleWeekSelect");
@@ -280,12 +342,7 @@ document.querySelector("#clearLessonLogFilters").addEventListener("click", clear
 });
 copyParentDraft.addEventListener("click", copyCurrentParentDraft);
 tuitionStudentSelect.addEventListener("change", () => renderTuitionSlip(true));
-tuitionFeeType.addEventListener("change", () => {
-  const student = data.students[Number(tuitionStudentSelect.value)];
-  tuitionPackageLessons.value = getTuitionPackageLessons(student);
-  renderTuitionSlip(false);
-});
-[tuitionStudentName, tuitionPackageLessons, tuitionTotalFee, tuitionComment].forEach(input => {
+[tuitionStudentName, tuitionCourseName, tuitionPackage, tuitionStartDate, tuitionEndDate, tuitionCourseFee, tuitionDiscount, tuitionTotalFee, tuitionDueDate, tuitionComment].forEach(input => {
   input.addEventListener("input", () => renderTuitionSlip(false));
 });
 printTuitionSlip.addEventListener("click", printTuitionSlipPreview);
@@ -308,6 +365,21 @@ document.querySelector("#saveData").addEventListener("click", () => saveData(tru
 exportBackup.addEventListener("click", exportDataBackup);
 importBackup.addEventListener("click", () => importBackupFile.click());
 importBackupFile.addEventListener("change", importDataBackup);
+loadDriveData.addEventListener("click", loadDataFromDrive);
+saveDriveData.addEventListener("click", saveDataToDrive);
+loadDriveDataDashboard.addEventListener("click", loadDataFromDrive);
+saveDriveDataDashboard.addEventListener("click", saveDataToDrive);
+saveDriveSettings.addEventListener("click", saveDriveSyncSettings);
+loginForm.addEventListener("submit", event => {
+  event.preventDefault();
+  signInUser();
+});
+signOut.addEventListener("click", signOutUser);
+resetOwnPassword.addEventListener("click", () => openPasswordResetModal(false));
+passwordResetForm.addEventListener("submit", event => {
+  event.preventDefault();
+  saveOwnPassword();
+});
 
 document.querySelector("#resetData").addEventListener("click", () => {
   const confirmed = window.confirm("Reset all data to the original sample data?");
@@ -318,6 +390,190 @@ document.querySelector("#resetData").addEventListener("click", () => {
   saveData(true);
   render();
 });
+
+function getUserAccounts() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(userAccountsKey) || "null");
+    if (Array.isArray(saved) && saved.length) return normalizeUserAccounts(saved);
+  } catch {
+    // Fall through to default accounts.
+  }
+
+  const accounts = normalizeUserAccounts(defaultUserAccounts);
+  localStorage.setItem(userAccountsKey, JSON.stringify(accounts));
+  return accounts;
+}
+
+function normalizeUserAccounts(accounts) {
+  return accounts
+    .map(account => ({
+      username: String(account.username || "").trim(),
+      password: String(account.password || "123"),
+      role: rolePermissions[account.role] ? account.role : "staff",
+      mustResetPassword: account.mustResetPassword !== false
+    }))
+    .filter(account => account.username);
+}
+
+function saveUserAccounts(accounts) {
+  localStorage.setItem(userAccountsKey, JSON.stringify(normalizeUserAccounts(accounts)));
+}
+
+function loadActiveUser() {
+  try {
+    const username = localStorage.getItem(activeUserKey);
+    if (!username) return null;
+    const account = findUserAccount(username);
+    return account ? { username: account.username, role: account.role } : null;
+  } catch {
+    return null;
+  }
+}
+
+function findUserAccount(username) {
+  const normalizedUsername = normalizeSearchText(username);
+  return getUserAccounts().find(account => normalizeSearchText(account.username) === normalizedUsername) || null;
+}
+
+function signInUser() {
+  const account = findUserAccount(loginUsername.value);
+  if (!account || account.password !== loginPassword.value) {
+    loginError.textContent = "Wrong account or password.";
+    return;
+  }
+
+  currentUser = { username: account.username, role: account.role };
+  localStorage.setItem(activeUserKey, account.username);
+  loginPassword.value = "";
+  loginError.textContent = "";
+  render();
+  showTab(getInitialTabForRole());
+  showToast(`Signed in as ${account.username}`);
+
+  if (account.mustResetPassword || account.password === "123") {
+    openPasswordResetModal(true);
+  }
+}
+
+function signOutUser() {
+  currentUser = null;
+  localStorage.removeItem(activeUserKey);
+  applyRoleUi();
+  closeAllModals();
+}
+
+function openPasswordResetModal(isRequired) {
+  passwordResetModal.dataset.required = isRequired ? "true" : "false";
+  passwordResetModal.classList.add("open");
+  passwordResetModal.setAttribute("aria-hidden", "false");
+  passwordResetError.textContent = "";
+  newPassword.value = "";
+  confirmNewPassword.value = "";
+  newPassword.focus();
+}
+
+function closePasswordResetModal() {
+  passwordResetModal.classList.remove("open");
+  passwordResetModal.setAttribute("aria-hidden", "true");
+  passwordResetModal.dataset.required = "false";
+}
+
+function saveOwnPassword() {
+  if (!currentUser) return;
+  const password = newPassword.value.trim();
+  const confirmedPassword = confirmNewPassword.value.trim();
+
+  if (password.length < 4) {
+    passwordResetError.textContent = "Password must have at least 4 characters.";
+    return;
+  }
+
+  if (password === "123") {
+    passwordResetError.textContent = "Please choose a password different from 123.";
+    return;
+  }
+
+  if (password !== confirmedPassword) {
+    passwordResetError.textContent = "Passwords do not match.";
+    return;
+  }
+
+  const accounts = getUserAccounts();
+  const account = accounts.find(user => normalizeSearchText(user.username) === normalizeSearchText(currentUser.username));
+  if (!account) return;
+
+  account.password = password;
+  account.mustResetPassword = false;
+  saveUserAccounts(accounts);
+  closePasswordResetModal();
+  showToast("Password updated");
+}
+
+function can(action) {
+  if (!currentUser) return false;
+  const permissions = rolePermissions[currentUser.role]?.actions || [];
+  return permissions.includes("all") || permissions.includes(action);
+}
+
+function canOpenTab(tabId) {
+  if (!currentUser) return false;
+  return (rolePermissions[currentUser.role]?.tabs || []).includes(tabId);
+}
+
+function getInitialTabForRole() {
+  return rolePermissions[currentUser?.role]?.tabs?.[0] || "scheduleTab";
+}
+
+function applyRoleUi() {
+  const isSignedIn = Boolean(currentUser);
+  authOverlay.classList.toggle("open", !isSignedIn);
+  authOverlay.setAttribute("aria-hidden", isSignedIn ? "true" : "false");
+
+  currentUserPill.hidden = !isSignedIn;
+  resetOwnPassword.classList.toggle("role-hidden", !isSignedIn);
+  signOut.classList.toggle("role-hidden", !isSignedIn);
+
+  if (isSignedIn) {
+    currentUserPill.innerHTML = `${currentUser.username}<span>${roleLabels[currentUser.role] || currentUser.role}</span>`;
+  }
+
+  document.querySelectorAll(".tab-button").forEach(button => {
+    button.classList.toggle("role-hidden", !canOpenTab(button.dataset.tab));
+  });
+
+  setActionVisible("#saveData", can("all"));
+  setActionVisible("#importBackup", can("all"));
+  setActionVisible("#exportBackup", can("backup.export") || can("all"));
+  setActionVisible("#loadDriveData", can("drive.load") || can("all"));
+  setActionVisible("#saveDriveData", can("all"));
+  setActionVisible("#saveDriveSettings", can("drive.load") || can("all"));
+  setActionVisible("#loadDriveDataDashboard", can("drive.load") || can("all"));
+  setActionVisible("#saveDriveDataDashboard", can("all"));
+  setActionVisible(".drive-sync-panel", can("drive.load") || can("all"));
+  setActionVisible("#addStudent", can("students.edit"));
+  setActionVisible("#deleteStudentModal", can("all"));
+  setActionVisible("#stopClassSchedule", can("all"));
+
+  if (isSignedIn) {
+    const activePanel = document.querySelector(".tab-panel.active");
+    if (!activePanel || !canOpenTab(activePanel.id)) showTab(getInitialTabForRole());
+  } else {
+    document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+  }
+}
+
+function setActionVisible(selector, isVisible) {
+  document.querySelectorAll(selector).forEach(element => {
+    element.classList.toggle("role-hidden", !isVisible);
+  });
+}
+
+function closeAllModals() {
+  document.querySelectorAll(".modal-backdrop.open").forEach(modal => {
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  });
+}
 
 function loadData() {
   const saved = localStorage.getItem(storageKey);
@@ -540,7 +796,188 @@ function saveData(showMessage) {
   if (showMessage) showToast();
 }
 
+function loadDriveSyncSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(driveSyncSettingsKey) || "{}");
+    driveSyncUrl.value = saved.url || "";
+    driveSyncToken.value = saved.token || "";
+    updateDriveSyncStatus(saved.lastSyncAt ? `Last sync: ${formatShortDateTime(saved.lastSyncAt)}` : "Ready to connect");
+  } catch {
+    updateDriveSyncStatus("Local data only");
+  }
+}
+
+function getDriveSyncSettings() {
+  return {
+    url: driveSyncUrl.value.trim(),
+    token: driveSyncToken.value.trim()
+  };
+}
+
+function saveDriveSyncSettings() {
+  if (!can("drive.load") && !can("all")) {
+    window.alert("Your account cannot update Drive sync settings.");
+    return;
+  }
+
+  const settings = getDriveSyncSettings();
+  if (!settings.url || !settings.token) {
+    window.alert("Please enter both the Google Apps Script URL and sync password.");
+    return;
+  }
+
+  localStorage.setItem(driveSyncSettingsKey, JSON.stringify(settings));
+  updateDriveSyncStatus("Sync settings saved");
+  showToast("Drive sync settings saved");
+}
+
+async function loadDataFromDrive() {
+  if (!can("drive.load") && !can("all")) {
+    window.alert("Your account cannot load data from Drive.");
+    return;
+  }
+
+  const settings = getDriveSyncSettings();
+  if (!ensureDriveSyncSettings(settings)) return;
+
+  const confirmed = window.confirm(
+    "Load data from Google Drive?\n\nThis will replace the current data in this browser. A local safety backup will be kept before importing."
+  );
+  if (!confirmed) return;
+
+  try {
+    setDriveButtonsBusy(true);
+    updateDriveSyncStatus("Loading from Drive...");
+    const response = await sendDriveSyncRequest(settings, { action: "load" });
+    const importedData = response?.data;
+
+    if (!isValidBackupData(importedData)) {
+      window.alert("The Google Drive file does not look like Mandy English data.");
+      updateDriveSyncStatus("Drive data is not valid");
+      return;
+    }
+
+    backupCurrentDataBeforeImport();
+    data = importedData;
+    normalizeData();
+    syncClassStudents();
+    saveData(false);
+    render();
+    rememberDriveSync(settings);
+    updateDriveSyncStatus(`Loaded: ${formatShortDateTime(new Date().toISOString())}`);
+    showToast("Loaded from Drive");
+  } catch (error) {
+    window.alert(`Cannot load from Google Drive.\n\n${error.message || "Please check the Web App URL and sync password."}`);
+    updateDriveSyncStatus("Load failed");
+  } finally {
+    setDriveButtonsBusy(false);
+  }
+}
+
+async function saveDataToDrive() {
+  if (!can("all")) {
+    window.alert("Only Admin can save shared data to Drive.");
+    return;
+  }
+
+  const settings = getDriveSyncSettings();
+  if (!ensureDriveSyncSettings(settings)) return;
+
+  const confirmed = window.confirm(
+    "Save current data to Google Drive?\n\nThis will overwrite the shared Mandy English data file on Drive."
+  );
+  if (!confirmed) return;
+
+  try {
+    setDriveButtonsBusy(true);
+    updateDriveSyncStatus("Saving to Drive...");
+    await sendDriveSyncRequest(settings, {
+      action: "save",
+      payload: {
+        app: "Mandy English Student Management",
+        version: "1.0",
+        exportedAt: new Date().toISOString(),
+        storageKey,
+        data
+      }
+    });
+    rememberDriveSync(settings);
+    updateDriveSyncStatus(`Saved: ${formatShortDateTime(new Date().toISOString())}`);
+    showToast("Saved to Drive");
+  } catch (error) {
+    window.alert(`Cannot save to Google Drive.\n\n${error.message || "Please check the Web App URL and sync password."}`);
+    updateDriveSyncStatus("Save failed");
+  } finally {
+    setDriveButtonsBusy(false);
+  }
+}
+
+function ensureDriveSyncSettings(settings) {
+  if (!settings.url || !settings.token) {
+    window.alert("Please enter the Google Apps Script URL and sync password in Dashboard > Google Drive Sync first.");
+    showTab("dashboardTab");
+    driveSyncUrl.focus();
+    return false;
+  }
+
+  localStorage.setItem(driveSyncSettingsKey, JSON.stringify(settings));
+  return true;
+}
+
+async function sendDriveSyncRequest(settings, body) {
+  const response = await fetch(settings.url, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      token: settings.token,
+      ...body
+    })
+  });
+  const text = await response.text();
+  let parsed;
+
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error("The sync server returned an unreadable response.");
+  }
+
+  if (!response.ok || !parsed.ok) {
+    throw new Error(parsed.error || "Drive sync request failed.");
+  }
+
+  return parsed;
+}
+
+function rememberDriveSync(settings) {
+  localStorage.setItem(driveSyncSettingsKey, JSON.stringify({
+    ...settings,
+    lastSyncAt: new Date().toISOString()
+  }));
+}
+
+function setDriveButtonsBusy(isBusy) {
+  [loadDriveData, saveDriveData, loadDriveDataDashboard, saveDriveDataDashboard, saveDriveSettings].forEach(button => {
+    button.disabled = isBusy;
+  });
+}
+
+function updateDriveSyncStatus(message) {
+  if (driveSyncStatus) driveSyncStatus.textContent = message;
+}
+
+function formatShortDateTime(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${formatShortDate(date)} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
 function exportDataBackup() {
+  if (!can("backup.export") && !can("all")) {
+    window.alert("Your account cannot export backups.");
+    return;
+  }
+
   const payload = {
     app: "Mandy English Student Management",
     version: "1.0",
@@ -563,6 +1000,12 @@ function exportDataBackup() {
 }
 
 function importDataBackup(event) {
+  if (!can("all")) {
+    window.alert("Only Admin can import backups.");
+    importBackupFile.value = "";
+    return;
+  }
+
   const file = event.target.files?.[0];
   if (!file) return;
 
@@ -642,6 +1085,7 @@ function render() {
   renderTuitionSlip(true);
   renderFinance();
   updateDashboard();
+  applyRoleUi();
 }
 
 function applyUserRecordUpdates() {
@@ -1377,7 +1821,7 @@ function createScheduleCell(classItem, index) {
   button.type = "button";
   button.className = "schedule-button";
   button.textContent = getClassScheduleForWeek(classItem, selectedWeekStart) || classItem.schedule || "Choose schedule";
-  button.disabled = isStoppedClass(classItem);
+  button.disabled = isStoppedClass(classItem) || !can("all");
   button.addEventListener("click", () => openScheduleModal(index));
   cell.append(button);
   return cell;
@@ -1390,6 +1834,10 @@ function createClassActionCell(classItem, index) {
   const statusButton = document.createElement("button");
 
   actions.className = "class-action-cell";
+  if (!can("all")) {
+    cell.textContent = "-";
+    return cell;
+  }
 
   renameButton.type = "button";
   renameButton.className = "rename-class-button";
@@ -1553,7 +2001,9 @@ function createStudentActionCell(index) {
   editButton.textContent = "Edit";
   editButton.addEventListener("click", () => openStudentModal(index));
 
-  cell.append(paymentButton, editButton);
+  if (can("payments.edit") || can("all")) cell.append(paymentButton);
+  if (can("students.edit") || can("all")) cell.append(editButton);
+  if (!cell.children.length) cell.textContent = "-";
   return cell;
 }
 
@@ -1566,6 +2016,8 @@ function applyStatusStyle(select, status) {
 }
 
 function updateStudent(index, key, value) {
+  if (!can("students.edit") && !can("all")) return;
+
   const previousStudent = { ...data.students[index] };
   data.students[index][key] = key === "lessonsDone" ? Math.max(0, Number(value) || 0) : value;
   if (key === "name" || key === "className") {
@@ -1582,17 +2034,29 @@ function updateStudent(index, key, value) {
 }
 
 function updateClass(index, key, value) {
+  if (!can("all")) return;
+
   data.classes[index][key] = value;
   saveData(false);
 }
 
 function stopEditingClass() {
+  if (!can("all")) {
+    window.alert("Only Admin can stop classes.");
+    return;
+  }
+
   if (editingScheduleIndex === null) return;
   stopClass(editingScheduleIndex);
   closeScheduleModal();
 }
 
 function stopClass(index) {
+  if (!can("all")) {
+    window.alert("Only Admin can stop classes.");
+    return;
+  }
+
   const classItem = data.classes[index];
   const weekLabel = formatStoredDate(formatDateValue(selectedWeekStart));
   const confirmed = window.confirm(`Stop ${classItem.name} from week ${weekLabel}? Past schedules will stay unchanged.`);
@@ -1607,6 +2071,11 @@ function stopClass(index) {
 }
 
 function reactivateClass(index) {
+  if (!can("all")) {
+    window.alert("Only Admin can reactivate classes.");
+    return;
+  }
+
   const classItem = data.classes[index];
   const weekLabel = formatStoredDate(formatDateValue(selectedWeekStart));
   const confirmed = window.confirm(`Reactivate ${classItem.name} from week ${weekLabel}? Past off weeks will stay unchanged.`);
@@ -1621,6 +2090,11 @@ function reactivateClass(index) {
 }
 
 function renameClass(index) {
+  if (!can("all")) {
+    window.alert("Only Admin can rename classes.");
+    return;
+  }
+
   const classItem = data.classes[index];
   if (!classItem) return;
 
@@ -1884,6 +2358,11 @@ function getLatestClassStatus(history) {
 }
 
 function openScheduleModal(index) {
+  if (!can("all")) {
+    window.alert("Only Admin can edit class schedules.");
+    return;
+  }
+
   editingScheduleIndex = index;
   scheduleRows.innerHTML = "";
   document.querySelector("#scheduleModalTitle").textContent = data.classes[index].name;
@@ -1940,6 +2419,7 @@ function addSchedulePickerRow(day = "Mon", startTime = "18:00", endTime = "19:00
 }
 
 function saveScheduleFromPicker() {
+  if (!can("all")) return;
   if (editingScheduleIndex === null) return;
 
   const classItem = data.classes[editingScheduleIndex];
@@ -2107,6 +2587,8 @@ function getLegacyTeacherForWeek(legacyTeacherKey, weekStart) {
 }
 
 function updateTeacherName(key, value) {
+  if (!can("schedule.teacher") && !can("all")) return;
+
   const teacherName = value.trim();
   if (teacherName) {
     data.teachers[key] = teacherName;
@@ -2121,6 +2603,11 @@ function isOffTeacher(teacher) {
 }
 
 function toggleSessionDone(day, classSlot, date) {
+  if (!can("schedule.done") && !can("all")) {
+    window.alert("Your account cannot mark classes as Done.");
+    return;
+  }
+
   const session = {
     ...classSlot,
     date,
@@ -2244,6 +2731,11 @@ function closeLessonLogModal() {
 }
 
 function saveLessonLogAndCompleteSession() {
+  if (!can("lessonLog.edit") && !can("all")) {
+    window.alert("Your account cannot save lesson logs.");
+    return;
+  }
+
   if (!pendingLessonLogSession) return;
 
   const session = pendingLessonLogSession;
@@ -2489,6 +2981,7 @@ function createAttendanceRow(student, session, studentIndex) {
   editButton.type = "button";
   editButton.className = isEditing ? "save-attendance-button" : "edit-attendance-button";
   editButton.textContent = isEditing ? "Save" : "Edit";
+  editButton.classList.toggle("role-hidden", !can("attendance.edit") && !can("all"));
   editButton.addEventListener("click", () => {
     if (isEditing) {
       saveAttendanceEdit(row, student, studentIndex, session, rowKey);
@@ -3637,6 +4130,7 @@ function renderWeeklySchedule() {
         teacherInput.value = teacherName;
         teacherInput.rows = 2;
         teacherInput.spellcheck = false;
+        teacherInput.disabled = !can("schedule.teacher") && !can("all");
         teacherInput.setAttribute("aria-label", `Teacher for ${item.className}`);
         teacherInput.addEventListener("input", event => {
           const session = {
@@ -3664,6 +4158,7 @@ function renderWeeklySchedule() {
         doneButton.type = "button";
         doneButton.className = isDone ? "done-button done" : "done-button";
         doneButton.textContent = isDone ? "Done" : "Done";
+        doneButton.classList.toggle("role-hidden", !can("schedule.done") && !can("all"));
         doneButton.addEventListener("click", () => {
           toggleSessionDone(day, item, date);
         });
@@ -3828,6 +4323,9 @@ function getAssistantReply(message) {
   const addStudentMatch = message.match(/(?:thêm|add)\s+(?:học viên|student)?\s*(.+?)\s+(?:vào\s+)?lớp\s+(.+)/i);
 
   if (addStudentMatch) {
+    if (!can("students.edit") && !can("all")) {
+      return "Account này không có quyền thêm học viên. Bạn cần dùng Staff hoặc Admin.";
+    }
     const name = addStudentMatch[1].trim().replace(/^tên\s+/i, "");
     const className = addStudentMatch[2].trim();
     openStudentModal();
@@ -4028,12 +4526,17 @@ function showToast(message = "Saved") {
 }
 
 function openStudentModal(index = null) {
+  if (!can("students.edit") && !can("all")) {
+    window.alert("Your account cannot edit students.");
+    return;
+  }
+
   editingStudentIndex = index;
   studentForm.reset();
   renderStudentModalClassChoices();
   document.querySelector("#studentModalEyebrow").textContent = index === null ? "New student" : "Edit student";
   document.querySelector("#studentModalTitle").textContent = index === null ? "Add Student" : "Edit Student";
-  deleteStudentModal.classList.toggle("show", index !== null);
+  deleteStudentModal.classList.toggle("show", index !== null && can("all"));
 
   if (index === null) {
     document.querySelector("#newStudentLessons").value = 0;
@@ -4059,6 +4562,11 @@ function closeStudentModal() {
 }
 
 function openPaymentModal(index) {
+  if (!can("payments.edit") && !can("all")) {
+    window.alert("Your account cannot update payments.");
+    return;
+  }
+
   editingPaymentStudentIndex = index;
   const student = data.students[index];
   const totalLessons = getStudentCycleLessons(student);
@@ -4090,6 +4598,7 @@ function updatePaymentLessonDefault() {
 }
 
 function saveStudentPayment() {
+  if (!can("payments.edit") && !can("all")) return;
   if (editingPaymentStudentIndex === null) return;
 
   const student = data.students[editingPaymentStudentIndex];
@@ -4157,6 +4666,8 @@ function getNextDueDateFromPayment(dateValue, paymentType) {
 }
 
 function addStudentFromForm() {
+  if (!can("students.edit") && !can("all")) return;
+
   const formData = new FormData(studentForm);
   const selectedClass = newStudentClassSelect.value;
   const className = selectedClass === "__new__" ? newStudentClassNew.value.trim() : selectedClass;
@@ -4197,6 +4708,11 @@ function addStudentFromForm() {
 }
 
 function deleteEditingStudent() {
+  if (!can("all")) {
+    window.alert("Only Admin can delete students.");
+    return;
+  }
+
   if (editingStudentIndex === null) return;
 
   const student = data.students[editingStudentIndex];
@@ -4474,6 +4990,14 @@ function windows1252Byte(char) {
 }
 
 function showTab(tabId) {
+  if (!canOpenTab(tabId)) {
+    if (!currentUser) {
+      applyRoleUi();
+      return;
+    }
+    tabId = getInitialTabForRole();
+  }
+
   document.querySelectorAll(".tab-button").forEach(button => {
     button.classList.toggle("active", button.dataset.tab === tabId);
   });
@@ -4692,29 +5216,37 @@ function renderTuitionSlip(resetEditableFields = false) {
 
   if (student && resetEditableFields) {
     tuitionStudentName.value = student.name;
-    tuitionFeeType.value = normalizePaymentType(student.paymentType).includes("Course") ? "Course" : "Monthly";
-    tuitionPackageLessons.value = getTuitionPackageLessons(student);
-    tuitionComment.value = getDefaultTuitionComment(student);
-    if (!tuitionTotalFee.value) tuitionTotalFee.value = "";
+    tuitionCourseName.value = student.className || "English Communication";
+    tuitionPackage.value = `${getTuitionPackageLessons(student)} Sessions`;
+    tuitionStartDate.value = formatLongDateText(student.lastPaymentDate);
+    tuitionEndDate.value = "";
+    tuitionCourseFee.value = "";
+    tuitionDiscount.value = "0 VND";
+    tuitionTotalFee.value = "";
+    tuitionDueDate.value = formatLongDateText(student.nextDueDate);
+    tuitionComment.value = getDefaultTuitionComment();
   }
 
   slipStudentName.textContent = tuitionStudentName.value || student?.name || "-";
-  slipFeeType.textContent = tuitionFeeType.value || "Monthly";
-  const packageLessons = Number(tuitionPackageLessons.value) || 0;
-  slipLessonCount.textContent = `${packageLessons} ${packageLessons === 1 ? "lesson" : "lessons"}`;
+  slipCourseName.textContent = tuitionCourseName.value || student?.className || "-";
+  slipPackage.textContent = tuitionPackage.value || "-";
+  slipStartDate.textContent = tuitionStartDate.value || "-";
+  slipEndDate.textContent = tuitionEndDate.value || "-";
+  slipCourseFee.textContent = formatFeeDisplay(tuitionCourseFee.value);
+  slipDiscount.textContent = formatFeeDisplay(tuitionDiscount.value || "0 VND");
   slipTotalFee.textContent = formatFeeDisplay(tuitionTotalFee.value);
+  slipDueDate.textContent = tuitionDueDate.value || "-";
   slipComment.textContent = tuitionComment.value || "-";
   renderSlipQr();
 }
 
 function getTuitionPackageLessons(student) {
   if (!student) return 0;
-  if (tuitionFeeType.value === "Course") return getStudentCycleLessons(student);
-  return 8;
+  return getStudentCycleLessons(student);
 }
 
-function getDefaultTuitionComment(student) {
-  return getParentReportDraftForStudent(student);
+function getDefaultTuitionComment() {
+  return "The course end date is based on the agreed class schedule and the number of sessions in the package.";
 }
 
 function getParentReportDraftForStudent(student) {
@@ -4732,6 +5264,18 @@ function formatFeeDisplay(value) {
     return `${numericValue.toLocaleString("en-US")} VND`;
   }
   return cleanValue;
+}
+
+function formatLongDateText(value) {
+  const normalizedDate = normalizeDateInput(value);
+  if (!normalizedDate) return "";
+
+  const date = parseDateValue(normalizedDate);
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
 }
 
 function renderSlipQr() {
@@ -5274,4 +5818,5 @@ function clearStudentFilters() {
   renderStudents();
 }
 
+loadDriveSyncSettings();
 render();

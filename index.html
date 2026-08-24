@@ -13,6 +13,11 @@
       <h1>Student Management</h1>
     </div>
     <div class="header-actions">
+      <div id="currentUserPill" class="current-user-pill" hidden></div>
+      <button id="resetOwnPassword" class="ghost-button" type="button">Reset password</button>
+      <button id="signOut" class="ghost-button" type="button">Sign out</button>
+      <button id="loadDriveData" class="ghost-button" type="button">Load from Drive</button>
+      <button id="saveDriveData" class="ghost-button" type="button">Save to Drive</button>
       <button id="exportBackup" class="ghost-button" type="button">Export Backup</button>
       <button id="importBackup" class="ghost-button" type="button">Import Backup</button>
       <input id="importBackupFile" class="hidden-file-input" type="file" accept="application/json,.json">
@@ -68,6 +73,30 @@
           <input id="assistantInput" type="text" placeholder="Try: Stage 4 có bao nhiêu học viên? / thêm học viên An lớp Stage 4">
           <button class="primary-button" type="submit">Send</button>
         </form>
+      </section>
+      <section class="drive-sync-panel" aria-label="Google Drive sync">
+        <div class="assistant-header">
+          <div>
+            <p class="eyebrow">Cloud Data</p>
+            <h2>Google Drive Sync</h2>
+          </div>
+          <span id="driveSyncStatus">Local data only</span>
+        </div>
+        <div class="drive-sync-grid">
+          <label>
+            Google Apps Script URL
+            <input id="driveSyncUrl" type="url" placeholder="Paste your Web App URL here">
+          </label>
+          <label>
+            Sync password
+            <input id="driveSyncToken" type="password" placeholder="Private password">
+          </label>
+        </div>
+        <div class="drive-sync-actions">
+          <button id="saveDriveSettings" class="ghost-button" type="button">Save sync settings</button>
+          <button id="loadDriveDataDashboard" class="ghost-button" type="button">Load from Drive</button>
+          <button id="saveDriveDataDashboard" class="primary-button" type="button">Save to Drive</button>
+        </div>
       </section>
     </section>
 
@@ -433,26 +462,43 @@
             <select id="tuitionStudentSelect"></select>
           </label>
           <label>
-            <span>Fee Type</span>
-            <select id="tuitionFeeType">
-              <option value="Monthly">Monthly</option>
-              <option value="Course">Course</option>
-            </select>
+            <span>Course</span>
+            <input id="tuitionCourseName" type="text">
           </label>
           <label>
             <span>Student Name</span>
             <input id="tuitionStudentName" type="text">
           </label>
           <label>
-            <span>Package Lessons</span>
-            <input id="tuitionPackageLessons" type="number" min="0" step="1">
+            <span>Package</span>
+            <input id="tuitionPackage" type="text">
+          </label>
+          <label>
+            <span>Start Date</span>
+            <input id="tuitionStartDate" type="text">
+          </label>
+          <label>
+            <span>End Date</span>
+            <input id="tuitionEndDate" type="text">
+          </label>
+          <label>
+            <span>Course Fee</span>
+            <input id="tuitionCourseFee" type="text" placeholder="0 VND">
+          </label>
+          <label>
+            <span>Discount</span>
+            <input id="tuitionDiscount" type="text" placeholder="0 VND">
           </label>
           <label>
             <span>Total Fee</span>
             <input id="tuitionTotalFee" type="text" placeholder="0 VND">
           </label>
+          <label>
+            <span>Payment Due Date</span>
+            <input id="tuitionDueDate" type="text">
+          </label>
           <label class="tuition-comment-control">
-            <span>Learning Progress Note</span>
+            <span>Confirmation Note</span>
             <textarea id="tuitionComment" rows="3"></textarea>
           </label>
         </div>
@@ -472,29 +518,64 @@
           </header>
 
           <div class="tuition-slip-body">
-            <div class="slip-info-grid">
+            <section class="slip-confirmation-title">
+              <h4>Course & Fee Confirmation</h4>
+            </section>
+
+            <div class="slip-section">
+              <h4>Student Information</h4>
               <div class="slip-info-row">
-                <span>Student</span>
+                <span>Student Name</span>
                 <strong id="slipStudentName">-</strong>
               </div>
               <div class="slip-info-row">
-                <span>Fee Type</span>
-                <strong id="slipFeeType">Monthly</strong>
-              </div>
-              <div class="slip-info-row">
-                <span>Package Lessons</span>
-                <strong id="slipLessonCount">0 lessons</strong>
+                <span>Course</span>
+                <strong id="slipCourseName">-</strong>
               </div>
             </div>
 
-            <div class="slip-total-box">
-              <span>Total Tuition Fee</span>
-              <strong id="slipTotalFee">0 VND</strong>
+            <div class="slip-section">
+              <h4>Course Package</h4>
+              <div class="slip-info-row">
+                <span>Package</span>
+                <strong id="slipPackage">-</strong>
+              </div>
+              <div class="slip-info-row">
+                <span>Start Date</span>
+                <strong id="slipStartDate">-</strong>
+              </div>
+              <div class="slip-info-row">
+                <span>End Date</span>
+                <strong id="slipEndDate">-</strong>
+              </div>
+            </div>
+
+            <div class="slip-section slip-fee-section">
+              <h4>Tuition Fee</h4>
+              <div class="slip-info-row">
+                <span>Course Fee</span>
+                <strong id="slipCourseFee">0 VND</strong>
+              </div>
+              <div class="slip-info-row">
+                <span>Discount</span>
+                <strong id="slipDiscount">0 VND</strong>
+              </div>
+              <div class="slip-total-box">
+                <span>Total</span>
+                <strong id="slipTotalFee">0 VND</strong>
+              </div>
+            </div>
+
+            <div class="slip-section slip-payment-due">
+              <h4>Payment</h4>
+              <div class="slip-info-row">
+                <span>Payment Due Date</span>
+                <strong id="slipDueDate">-</strong>
+              </div>
             </div>
 
             <section class="slip-comment">
-              <h4>Learning Progress Note</h4>
-              <p id="slipComment">-</p>
+              <p id="slipComment">The course end date is based on the agreed class schedule and the number of sessions in the package.</p>
             </section>
 
             <footer class="slip-payment">
@@ -741,6 +822,52 @@
       <div class="modal-actions">
         <button id="cancelLessonLogModal" class="ghost-button" type="button">Cancel</button>
         <button class="primary-button" type="submit">Save log & mark done</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="authOverlay" class="auth-overlay" aria-hidden="true">
+    <form id="loginForm" class="auth-card" aria-labelledby="loginTitle">
+      <div>
+        <p class="eyebrow">Mandy English</p>
+        <h2 id="loginTitle">Sign In</h2>
+        <p class="auth-help">Use your staff account to continue.</p>
+      </div>
+      <label>
+        <span>Account</span>
+        <input id="loginUsername" type="text" autocomplete="username" required>
+      </label>
+      <label>
+        <span>Password</span>
+        <input id="loginPassword" type="password" autocomplete="current-password" required>
+      </label>
+      <p id="loginError" class="auth-error" aria-live="polite"></p>
+      <button class="primary-button" type="submit">Sign in</button>
+    </form>
+  </div>
+
+  <div id="passwordResetModal" class="modal-backdrop" aria-hidden="true">
+    <form id="passwordResetForm" class="modal compact-modal" aria-labelledby="passwordResetTitle">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Account Security</p>
+          <h2 id="passwordResetTitle">Reset Password</h2>
+        </div>
+      </div>
+      <p class="auth-help">Please change the default password before using the dashboard.</p>
+      <div class="form-grid">
+        <label>
+          <span>New Password</span>
+          <input id="newPassword" type="password" autocomplete="new-password" minlength="4" required>
+        </label>
+        <label>
+          <span>Confirm Password</span>
+          <input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="4" required>
+        </label>
+      </div>
+      <p id="passwordResetError" class="auth-error" aria-live="polite"></p>
+      <div class="modal-actions">
+        <button class="primary-button" type="submit">Save new password</button>
       </div>
     </form>
   </div>
