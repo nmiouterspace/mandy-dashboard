@@ -2252,6 +2252,11 @@ textarea:focus {
 }
 
 @media print {
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
   body {
     background: #ffffff;
     color: #000000;
@@ -2322,6 +2327,7 @@ textarea:focus {
     width: 138mm;
     max-width: 100%;
     margin: 0 auto;
+    background: #fffdfa !important;
     box-shadow: none;
     break-inside: avoid;
     page-break-inside: avoid;
@@ -2330,6 +2336,8 @@ textarea:focus {
   body.printing-tuition-slip .tuition-slip-header {
     gap: 2mm;
     padding: 4mm 6mm 4.5mm;
+    background: linear-gradient(135deg, #064942, #0b655b 58%, #4fb7a6) !important;
+    color: #ffffff !important;
   }
 
   body.printing-tuition-slip .tuition-logo {
