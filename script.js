@@ -5360,14 +5360,12 @@ function updateTuitionFollowupButton() {
 function matchesTuitionAlertFilter(student, filterValue) {
   if (!filterValue) return true;
 
+  const followupRank = getTuitionFollowupRank(student);
   const daysUntilDue = getDaysUntilDue(student.nextDueDate);
-  const reminder = getPaymentReminder(student);
-  const isPaymentDueNow = reminder.className === "reminder-due";
 
-  if (filterValue === "priority" && isPaymentDueNow) return true;
+  if (filterValue === "priority") return followupRank < 3;
   if (filterValue === "none") return daysUntilDue === null;
   if (daysUntilDue === null) return false;
-  if (filterValue === "priority") return daysUntilDue <= 2;
   if (filterValue === "overdue") return daysUntilDue < 0;
   if (filterValue === "today") return daysUntilDue === 0;
   if (filterValue === "7") return daysUntilDue >= 0 && daysUntilDue <= 7;
@@ -5814,8 +5812,11 @@ function compareStudentEntries(first, second, tuitionAlert = "") {
   if (statusDiff) return statusDiff;
 
   if (tuitionAlert) {
-    const alertDiff = getTuitionAlertRank(first.student) - getTuitionAlertRank(second.student);
+    const alertDiff = getTuitionFollowupRank(first.student) - getTuitionFollowupRank(second.student);
     if (alertDiff) return alertDiff;
+
+    const paymentDueDiff = Number(isPaymentDueNow(second.student)) - Number(isPaymentDueNow(first.student));
+    if (paymentDueDiff) return paymentDueDiff;
 
     const firstDaysUntilDue = getDaysUntilDue(first.student.nextDueDate);
     const secondDaysUntilDue = getDaysUntilDue(second.student.nextDueDate);
@@ -5827,16 +5828,16 @@ function compareStudentEntries(first, second, tuitionAlert = "") {
   return compareText(first.student.name, second.student.name);
 }
 
-function getTuitionAlertRank(student) {
+function getTuitionFollowupRank(student) {
   const daysUntilDue = getDaysUntilDue(student.nextDueDate);
-  const reminder = getPaymentReminder(student);
-  if (reminder.className === "reminder-due") return 0;
-  if (daysUntilDue === null) return 5;
-  if (daysUntilDue < 0) return 0;
-  if (daysUntilDue === 0) return 1;
-  if (daysUntilDue === 1) return 2;
-  if (daysUntilDue === 2) return 3;
-  return 4;
+  if (isPaymentDueNow(student) || (daysUntilDue !== null && daysUntilDue <= 0)) return 0;
+  if (daysUntilDue === 1) return 1;
+  if (daysUntilDue === 2) return 2;
+  return 3;
+}
+
+function isPaymentDueNow(student) {
+  return getPaymentReminder(student).className === "reminder-due";
 }
 
 function compareText(first, second) {
