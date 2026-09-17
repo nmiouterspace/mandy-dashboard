@@ -5359,6 +5359,7 @@ function updateTuitionFollowupButton() {
 
 function matchesTuitionAlertFilter(student, filterValue) {
   if (!filterValue) return true;
+  if (student.status !== "Active") return false;
 
   const followupRank = getTuitionFollowupRank(student);
   const daysUntilDue = getDaysUntilDue(student.nextDueDate);
