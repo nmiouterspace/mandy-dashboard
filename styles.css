@@ -2366,6 +2366,7 @@ textarea:focus {
   body.printing-tuition-slip .tuition-slip-body {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
     gap: 2mm;
     padding: 3mm 4mm 4mm;
   }
@@ -2381,9 +2382,31 @@ textarea:focus {
   }
 
   body.printing-tuition-slip .slip-section {
+    align-self: start;
     gap: 1mm;
     padding: 1.8mm 2.2mm;
     border-radius: 2.4mm;
+  }
+
+  body.printing-tuition-slip .slip-payment-due {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2mm;
+    min-height: auto;
+  }
+
+  body.printing-tuition-slip .slip-payment-due h4 {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  body.printing-tuition-slip .slip-payment-due .slip-info-row {
+    flex: 1;
+    justify-content: flex-end;
+    gap: 2mm;
+    padding-bottom: 0;
+    border-bottom: 0;
   }
 
   body.printing-tuition-slip .slip-section h4 {
