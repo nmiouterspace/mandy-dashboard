@@ -581,6 +581,12 @@ button {
   color: var(--green);
 }
 
+.tuition-followup-button.is-active {
+  background: #f59e0b;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(245, 158, 11, 0.22);
+}
+
 .ghost-link,
 .import-button {
   display: inline-flex;

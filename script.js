@@ -100,6 +100,7 @@ let editingScheduleIndex = null;
 let legacyTeachersRecovered = false;
 const editingAttendanceRows = new Set();
 const attendanceCycleViews = new Map();
+let isTuitionFollowupActive = false;
 
 const studentRows = document.querySelector("#studentRows");
 const classRows = document.querySelector("#classRows");
@@ -111,7 +112,7 @@ const filterClass = document.querySelector("#filterClass");
 const classListFilter = document.querySelector("#classListFilter");
 const attendanceClassFilter = document.querySelector("#attendanceClassFilter");
 const filterStatus = document.querySelector("#filterStatus");
-const filterTuitionAlert = document.querySelector("#filterTuitionAlert");
+const tuitionFollowupButton = document.querySelector("#tuitionFollowupButton");
 const activeCount = document.querySelector("#activeCount");
 const activeClassCount = document.querySelector("#activeClassCount");
 const pauseCount = document.querySelector("#pauseCount");
@@ -324,10 +325,11 @@ newStudentPayment.addEventListener("change", () => {
   updateDiscountField();
   updateLessonDefaults(false);
 });
-[filterClass, filterStatus, filterTuitionAlert].forEach(filter => {
+[filterClass, filterStatus].forEach(filter => {
   filter.addEventListener("input", renderStudents);
   filter.addEventListener("change", renderStudents);
 });
+tuitionFollowupButton.addEventListener("click", toggleTuitionFollowup);
 classListFilter.addEventListener("change", renderClasses);
 attendanceClassFilter.addEventListener("change", renderAttendanceBoard);
 [lessonLogClassFilter, lessonLogTeacherFilter, lessonLogDateFilter].forEach(filter => {
@@ -1073,6 +1075,7 @@ function render() {
   renderProgressStudentOptions();
   renderTuitionStudentOptions();
   renderStudentModalClassChoices();
+  updateTuitionFollowupButton();
   renderStudents();
   renderClasses();
   renderWeekOptions();
@@ -5325,7 +5328,7 @@ function renderClassSelectOptions(select, currentValue) {
 function getFilteredStudentEntries() {
   const selectedClass = filterClass.value;
   const selectedStatus = filterStatus.value;
-  const tuitionAlert = filterTuitionAlert.value;
+  const tuitionAlert = isTuitionFollowupActive ? "priority" : "";
 
   return data.students
     .map((student, index) => ({ student, index }))
@@ -5336,6 +5339,18 @@ function getFilteredStudentEntries() {
       return true;
     })
     .sort((first, second) => compareStudentEntries(first, second, tuitionAlert));
+}
+
+function toggleTuitionFollowup() {
+  isTuitionFollowupActive = !isTuitionFollowupActive;
+  updateTuitionFollowupButton();
+  renderStudents();
+}
+
+function updateTuitionFollowupButton() {
+  tuitionFollowupButton.classList.toggle("is-active", isTuitionFollowupActive);
+  tuitionFollowupButton.textContent = isTuitionFollowupActive ? "Showing Tuition Follow-up" : "Tuition Follow-up";
+  tuitionFollowupButton.setAttribute("aria-pressed", isTuitionFollowupActive ? "true" : "false");
 }
 
 function matchesTuitionAlertFilter(student, filterValue) {
@@ -5788,6 +5803,9 @@ function getSortedAttendanceGroups(groups) {
 }
 
 function compareStudentEntries(first, second, tuitionAlert = "") {
+  const statusDiff = getStudentStatusRank(first.student.status) - getStudentStatusRank(second.student.status);
+  if (statusDiff) return statusDiff;
+
   if (tuitionAlert) {
     const alertDiff = getTuitionAlertRank(first.student) - getTuitionAlertRank(second.student);
     if (alertDiff) return alertDiff;
@@ -5799,8 +5817,6 @@ function compareStudentEntries(first, second, tuitionAlert = "") {
     }
   }
 
-  const statusDiff = getStudentStatusRank(first.student.status) - getStudentStatusRank(second.student.status);
-  if (statusDiff) return statusDiff;
   return compareText(first.student.name, second.student.name);
 }
 
@@ -5854,7 +5870,8 @@ function getClassCategory(className) {
 function clearStudentFilters() {
   filterClass.value = "";
   filterStatus.value = "";
-  filterTuitionAlert.value = "";
+  isTuitionFollowupActive = false;
+  updateTuitionFollowupButton();
   renderStudents();
 }
 
