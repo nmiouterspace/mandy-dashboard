@@ -256,16 +256,17 @@
           </select>
         </label>
         <label>
-          <span>Due date</span>
-          <input id="filterDueDate" type="date">
-        </label>
-        <label>
-          <span>Due month</span>
-          <input id="filterDueMonth" type="month">
-        </label>
-        <label>
-          <span>Due year</span>
-          <input id="filterDueYear" type="number" min="2000" max="2100" placeholder="2026">
+          <span>Tuition Alert</span>
+          <select id="filterTuitionAlert">
+            <option value="">All tuition</option>
+            <option value="priority">Follow-up priority</option>
+            <option value="overdue">Overdue</option>
+            <option value="today">Due today</option>
+            <option value="1">Due in 1 day</option>
+            <option value="2">Due in 2 days</option>
+            <option value="7">Due within 7 days</option>
+            <option value="none">No due date</option>
+          </select>
         </label>
         <button id="clearFilters" class="ghost-button" type="button">Clear filters</button>
       </div>

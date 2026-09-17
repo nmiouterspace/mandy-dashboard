@@ -25,11 +25,11 @@ const rolePermissions = {
   },
   teacher: {
     tabs: ["scheduleTab", "attendanceTab", "lessonLogTab", "studentProgressTab"],
-    actions: ["schedule.view", "schedule.teacher", "schedule.done", "attendance.view", "attendance.edit", "lessonLog.view", "lessonLog.edit", "studentProgress.view"]
+    actions: ["schedule.view", "schedule.teacher", "schedule.done", "attendance.view", "attendance.edit", "lessonLog.view", "lessonLog.edit", "studentProgress.view", "backup.import"]
   },
   staff: {
     tabs: ["scheduleTab", "dashboardTab", "studentsTab", "classesTab", "attendanceTab", "lessonLogTab", "studentProgressTab", "tuitionSlipTab"],
-    actions: ["schedule.view", "students.view", "students.edit", "payments.edit", "classes.view", "attendance.view", "lessonLog.view", "studentProgress.view", "tuitionSlip.view", "tuitionSlip.edit", "backup.export", "drive.load"]
+    actions: ["schedule.view", "students.view", "students.edit", "payments.edit", "classes.view", "attendance.view", "lessonLog.view", "studentProgress.view", "tuitionSlip.view", "tuitionSlip.edit", "backup.import"]
   }
 };
 
@@ -111,9 +111,7 @@ const filterClass = document.querySelector("#filterClass");
 const classListFilter = document.querySelector("#classListFilter");
 const attendanceClassFilter = document.querySelector("#attendanceClassFilter");
 const filterStatus = document.querySelector("#filterStatus");
-const filterDueDate = document.querySelector("#filterDueDate");
-const filterDueMonth = document.querySelector("#filterDueMonth");
-const filterDueYear = document.querySelector("#filterDueYear");
+const filterTuitionAlert = document.querySelector("#filterTuitionAlert");
 const activeCount = document.querySelector("#activeCount");
 const activeClassCount = document.querySelector("#activeClassCount");
 const pauseCount = document.querySelector("#pauseCount");
@@ -326,7 +324,7 @@ newStudentPayment.addEventListener("change", () => {
   updateDiscountField();
   updateLessonDefaults(false);
 });
-[filterClass, filterStatus, filterDueDate, filterDueMonth, filterDueYear].forEach(filter => {
+[filterClass, filterStatus, filterTuitionAlert].forEach(filter => {
   filter.addEventListener("input", renderStudents);
   filter.addEventListener("change", renderStudents);
 });
@@ -542,14 +540,14 @@ function applyRoleUi() {
   });
 
   setActionVisible("#saveData", can("all"));
-  setActionVisible("#importBackup", can("all"));
-  setActionVisible("#exportBackup", can("backup.export") || can("all"));
-  setActionVisible("#loadDriveData", can("drive.load") || can("all"));
+  setActionVisible("#importBackup", can("backup.import") || can("all"));
+  setActionVisible("#exportBackup", can("all"));
+  setActionVisible("#loadDriveData", can("all"));
   setActionVisible("#saveDriveData", can("all"));
-  setActionVisible("#saveDriveSettings", can("drive.load") || can("all"));
-  setActionVisible("#loadDriveDataDashboard", can("drive.load") || can("all"));
+  setActionVisible("#saveDriveSettings", can("all"));
+  setActionVisible("#loadDriveDataDashboard", can("all"));
   setActionVisible("#saveDriveDataDashboard", can("all"));
-  setActionVisible(".drive-sync-panel", can("drive.load") || can("all"));
+  setActionVisible(".drive-sync-panel", can("all"));
   setActionVisible("#addStudent", can("students.edit"));
   setActionVisible("#deleteStudentModal", can("all"));
   setActionVisible("#stopClassSchedule", can("all"));
@@ -815,7 +813,7 @@ function getDriveSyncSettings() {
 }
 
 function saveDriveSyncSettings() {
-  if (!can("drive.load") && !can("all")) {
+  if (!can("all")) {
     window.alert("Your account cannot update Drive sync settings.");
     return;
   }
@@ -832,7 +830,7 @@ function saveDriveSyncSettings() {
 }
 
 async function loadDataFromDrive() {
-  if (!can("drive.load") && !can("all")) {
+  if (!can("all")) {
     window.alert("Your account cannot load data from Drive.");
     return;
   }
@@ -973,7 +971,7 @@ function formatShortDateTime(value) {
 }
 
 function exportDataBackup() {
-  if (!can("backup.export") && !can("all")) {
+  if (!can("all")) {
     window.alert("Your account cannot export backups.");
     return;
   }
@@ -1000,8 +998,8 @@ function exportDataBackup() {
 }
 
 function importDataBackup(event) {
-  if (!can("all")) {
-    window.alert("Only Admin can import backups.");
+  if (!can("backup.import") && !can("all")) {
+    window.alert("Your account cannot import backups.");
     importBackupFile.value = "";
     return;
   }
@@ -5327,21 +5325,44 @@ function renderClassSelectOptions(select, currentValue) {
 function getFilteredStudentEntries() {
   const selectedClass = filterClass.value;
   const selectedStatus = filterStatus.value;
-  const dueDate = filterDueDate.value;
-  const dueMonth = filterDueMonth.value;
-  const dueYear = filterDueYear.value.trim();
+  const tuitionAlert = filterTuitionAlert.value;
 
   return data.students
     .map((student, index) => ({ student, index }))
     .filter(({ student }) => {
       if (selectedClass && student.className !== selectedClass) return false;
       if (selectedStatus && student.status !== selectedStatus) return false;
-      if (dueDate && student.nextDueDate !== dueDate) return false;
-      if (dueMonth && !student.nextDueDate.startsWith(`${dueMonth}-`)) return false;
-      if (dueYear && !student.nextDueDate.startsWith(`${dueYear}-`)) return false;
+      if (!matchesTuitionAlertFilter(student, tuitionAlert)) return false;
       return true;
     })
-    .sort(compareStudentEntries);
+    .sort((first, second) => compareStudentEntries(first, second, tuitionAlert));
+}
+
+function matchesTuitionAlertFilter(student, filterValue) {
+  if (!filterValue) return true;
+
+  const daysUntilDue = getDaysUntilDue(student.nextDueDate);
+
+  if (filterValue === "none") return daysUntilDue === null;
+  if (daysUntilDue === null) return false;
+  if (filterValue === "priority") return daysUntilDue <= 2;
+  if (filterValue === "overdue") return daysUntilDue < 0;
+  if (filterValue === "today") return daysUntilDue === 0;
+  if (filterValue === "7") return daysUntilDue >= 0 && daysUntilDue <= 7;
+
+  return daysUntilDue === Number(filterValue);
+}
+
+function getDaysUntilDue(dateValue) {
+  const normalizedDate = normalizeDateInput(dateValue);
+  if (!normalizedDate) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = parseDateValue(normalizedDate);
+  dueDate.setHours(0, 0, 0, 0);
+
+  return Math.round((dueDate - today) / 86400000);
 }
 
 function getFilteredClassEntries() {
@@ -5766,10 +5787,31 @@ function getSortedAttendanceGroups(groups) {
   });
 }
 
-function compareStudentEntries(first, second) {
+function compareStudentEntries(first, second, tuitionAlert = "") {
+  if (tuitionAlert) {
+    const alertDiff = getTuitionAlertRank(first.student) - getTuitionAlertRank(second.student);
+    if (alertDiff) return alertDiff;
+
+    const firstDaysUntilDue = getDaysUntilDue(first.student.nextDueDate);
+    const secondDaysUntilDue = getDaysUntilDue(second.student.nextDueDate);
+    if (firstDaysUntilDue !== null && secondDaysUntilDue !== null && firstDaysUntilDue !== secondDaysUntilDue) {
+      return firstDaysUntilDue - secondDaysUntilDue;
+    }
+  }
+
   const statusDiff = getStudentStatusRank(first.student.status) - getStudentStatusRank(second.student.status);
   if (statusDiff) return statusDiff;
   return compareText(first.student.name, second.student.name);
+}
+
+function getTuitionAlertRank(student) {
+  const daysUntilDue = getDaysUntilDue(student.nextDueDate);
+  if (daysUntilDue === null) return 5;
+  if (daysUntilDue < 0) return 0;
+  if (daysUntilDue === 0) return 1;
+  if (daysUntilDue === 1) return 2;
+  if (daysUntilDue === 2) return 3;
+  return 4;
 }
 
 function compareText(first, second) {
@@ -5812,9 +5854,7 @@ function getClassCategory(className) {
 function clearStudentFilters() {
   filterClass.value = "";
   filterStatus.value = "";
-  filterDueDate.value = "";
-  filterDueMonth.value = "";
-  filterDueYear.value = "";
+  filterTuitionAlert.value = "";
   renderStudents();
 }
 
