@@ -5303,7 +5303,7 @@ function applyTuitionSlipPrintPage() {
   document.querySelector("#tuitionSlipPrintPage")?.remove();
   const style = document.createElement("style");
   style.id = "tuitionSlipPrintPage";
-  style.textContent = "@page { size: A4 portrait; margin: 8mm; }";
+  style.textContent = "@page { size: A5 portrait; margin: 5mm; }";
   document.head.append(style);
   window.addEventListener("afterprint", cleanupTuitionSlipPrintPage, { once: true });
 }

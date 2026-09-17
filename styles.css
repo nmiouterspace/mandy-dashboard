@@ -2319,7 +2319,7 @@ textarea:focus {
   }
 
   body.printing-tuition-slip .tuition-slip-preview {
-    width: 142mm;
+    width: 138mm;
     max-width: 100%;
     margin: 0 auto;
     box-shadow: none;
@@ -2328,74 +2328,83 @@ textarea:focus {
   }
 
   body.printing-tuition-slip .tuition-slip-header {
-    gap: 3mm;
-    padding: 5mm 8mm 6mm;
+    gap: 2mm;
+    padding: 4mm 6mm 4.5mm;
   }
 
   body.printing-tuition-slip .tuition-logo {
-    gap: 6mm;
+    gap: 4mm;
   }
 
   body.printing-tuition-slip .tuition-logo img {
-    width: 18mm;
-    height: 18mm;
-    border-radius: 4mm;
+    width: 15mm;
+    height: 15mm;
+    border-radius: 3mm;
   }
 
   body.printing-tuition-slip .tuition-logo strong {
-    font-size: 16pt;
+    font-size: 13pt;
   }
 
   body.printing-tuition-slip .tuition-logo small {
-    font-size: 8.5pt;
+    font-size: 7.8pt;
   }
 
   body.printing-tuition-slip .tuition-slip-header h3 {
-    font-size: 21pt;
+    font-size: 17pt;
     line-height: 1;
   }
 
   body.printing-tuition-slip .tuition-slip-body {
-    gap: 2.8mm;
-    padding: 4mm 6mm 5mm;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2mm;
+    padding: 3mm 4mm 4mm;
+  }
+
+  body.printing-tuition-slip .slip-confirmation-title,
+  body.printing-tuition-slip .slip-comment,
+  body.printing-tuition-slip .slip-payment {
+    grid-column: 1 / -1;
   }
 
   body.printing-tuition-slip .slip-confirmation-title h4 {
-    font-size: 13pt;
+    font-size: 11pt;
   }
 
   body.printing-tuition-slip .slip-section {
-    gap: 1.4mm;
-    padding: 2.2mm 3mm;
-    border-radius: 3mm;
+    gap: 1mm;
+    padding: 1.8mm 2.2mm;
+    border-radius: 2.4mm;
   }
 
   body.printing-tuition-slip .slip-section h4 {
-    font-size: 8pt;
+    font-size: 7.2pt;
   }
 
   body.printing-tuition-slip .slip-info-row {
-    padding-bottom: 1.1mm;
-    font-size: 9pt;
+    gap: 2mm;
+    padding-bottom: 0.8mm;
+    font-size: 7.8pt;
     line-height: 1.1;
   }
 
   body.printing-tuition-slip .slip-info-row strong {
-    font-size: 9.5pt;
+    font-size: 8.2pt;
   }
 
   body.printing-tuition-slip .slip-total-box {
-    padding: 2.4mm;
-    border-radius: 3mm;
+    padding: 1.8mm;
+    border-radius: 2.4mm;
   }
 
   body.printing-tuition-slip .slip-total-box span {
-    font-size: 8.5pt;
+    font-size: 7.6pt;
   }
 
   body.printing-tuition-slip .slip-total-box strong {
-    margin-top: 1mm;
-    font-size: 18pt;
+    margin-top: 0.5mm;
+    font-size: 15pt;
   }
 
   body.printing-tuition-slip .slip-comment h4 {
@@ -2404,59 +2413,59 @@ textarea:focus {
   }
 
   body.printing-tuition-slip .slip-comment p {
-    max-height: 16mm;
-    min-height: 9mm;
+    max-height: 11mm;
+    min-height: 7mm;
     overflow: hidden;
-    padding: 2mm;
-    border-radius: 3mm;
-    font-size: 8.5pt;
-    line-height: 1.25;
+    padding: 1.5mm 2mm;
+    border-radius: 2.4mm;
+    font-size: 7.5pt;
+    line-height: 1.18;
   }
 
   body.printing-tuition-slip .slip-payment {
-    gap: 1.8mm;
-    padding-top: 2mm;
+    gap: 1mm;
+    padding-top: 1.5mm;
   }
 
   body.printing-tuition-slip .slip-payment > p {
-    font-size: 10.5pt;
+    font-size: 8.5pt;
   }
 
   body.printing-tuition-slip .slip-qr-card {
     display: grid;
     grid-template-columns: 1fr;
     justify-items: center;
-    gap: 1mm;
-    width: 48mm;
-    padding: 2mm;
-    border-radius: 4mm;
+    gap: 0.6mm;
+    width: 39mm;
+    padding: 1.4mm;
+    border-radius: 3mm;
   }
 
   body.printing-tuition-slip .slip-qr-placeholder {
     grid-row: auto;
-    width: 40mm;
-    height: 40mm;
-    border-radius: 3mm;
+    width: 33mm;
+    height: 33mm;
+    border-radius: 2mm;
   }
 
   body.printing-tuition-slip .slip-qr-card > span {
-    font-size: 8.5pt;
+    font-size: 7pt;
   }
 
   body.printing-tuition-slip .slip-qr-card strong {
     justify-self: center;
-    font-size: 8.8pt;
+    font-size: 7.4pt;
   }
 
   body.printing-tuition-slip .slip-qr-card b {
     justify-self: center;
-    font-size: 13pt;
+    font-size: 10.5pt;
     line-height: 1;
   }
 
   body.printing-tuition-slip .slip-qr-card small {
     justify-self: center;
-    font-size: 8pt;
+    font-size: 6.8pt;
   }
 
   #scheduleTab .section-title {
