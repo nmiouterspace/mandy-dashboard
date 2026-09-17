@@ -230,6 +230,7 @@ const slipDueDate = document.querySelector("#slipDueDate");
 const slipComment = document.querySelector("#slipComment");
 const slipQrPreview = document.querySelector("#slipQrPreview");
 const scheduleWeekSelect = document.querySelector("#scheduleWeekSelect");
+const scheduleWeekNote = document.querySelector("#scheduleWeekNote");
 const previousWeek = document.querySelector("#previousWeek");
 const nextWeek = document.querySelector("#nextWeek");
 const currentWeek = document.querySelector("#currentWeek");
@@ -254,6 +255,7 @@ scheduleWeekSelect.addEventListener("change", event => {
   renderWeeklySchedule();
   renderAttendanceBoard();
 });
+scheduleWeekNote.addEventListener("input", saveScheduleWeekNote);
 previousWeek.addEventListener("click", () => shiftSelectedWeek(-1));
 nextWeek.addEventListener("click", () => shiftSelectedWeek(1));
 currentWeek.addEventListener("click", () => {
@@ -641,6 +643,7 @@ function normalizeData() {
   data.lessonLogs = Array.isArray(data.lessonLogs) ? data.lessonLogs.map(normalizeLessonLog).filter(Boolean) : [];
   data.migrations = data.migrations && typeof data.migrations === "object" ? data.migrations : {};
   data.scheduleHistory = data.scheduleHistory && typeof data.scheduleHistory === "object" ? data.scheduleHistory : {};
+  data.scheduleNotes = data.scheduleNotes && typeof data.scheduleNotes === "object" ? normalizeScheduleNotes(data.scheduleNotes) : {};
   data.tuitionSlip = data.tuitionSlip && typeof data.tuitionSlip === "object" ? data.tuitionSlip : {};
   data.tuitionSlip.qrImage = typeof data.tuitionSlip.qrImage === "string" ? data.tuitionSlip.qrImage : "";
   data.finance = data.finance && typeof data.finance === "object" ? data.finance : {};
@@ -677,6 +680,17 @@ function normalizeAttendanceNotes(notes) {
   return Object.entries(notes || {}).reduce((normalizedNotes, [key, value]) => {
     const text = repairVietnameseText(String(value || "").trim());
     if (text) normalizedNotes[key] = text;
+    return normalizedNotes;
+  }, {});
+}
+
+function normalizeScheduleNotes(notes) {
+  return Object.entries(notes || {}).reduce((normalizedNotes, [weekValue, value]) => {
+    const normalizedWeek = normalizeDateInput(weekValue);
+    if (!normalizedWeek) return normalizedNotes;
+
+    const text = repairVietnameseText(String(value || "").trim());
+    if (text) normalizedNotes[normalizedWeek] = text;
     return normalizedNotes;
   }, {});
 }
@@ -4043,6 +4057,8 @@ function csvEscape(value) {
 }
 
 function renderWeeklySchedule() {
+  renderScheduleWeekNote();
+
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const shifts = [
     { key: "morning", label: "Morning" },
@@ -4173,6 +4189,35 @@ function renderWeeklySchedule() {
       weeklySchedule.append(cell);
     });
   });
+}
+
+function getSelectedWeekKey() {
+  return formatDateValue(selectedWeekStart);
+}
+
+function renderScheduleWeekNote() {
+  const weekKey = getSelectedWeekKey();
+  scheduleWeekNote.value = data.scheduleNotes?.[weekKey] || "";
+  scheduleWeekNote.disabled = !can("schedule.teacher") && !can("all");
+}
+
+function saveScheduleWeekNote() {
+  if (!can("schedule.teacher") && !can("all")) {
+    renderScheduleWeekNote();
+    return;
+  }
+
+  const weekKey = getSelectedWeekKey();
+  const note = repairVietnameseText(scheduleWeekNote.value.trim());
+  data.scheduleNotes = data.scheduleNotes && typeof data.scheduleNotes === "object" ? data.scheduleNotes : {};
+
+  if (note) {
+    data.scheduleNotes[weekKey] = note;
+  } else {
+    delete data.scheduleNotes[weekKey];
+  }
+
+  saveData(true);
 }
 
 function renderWeekOptions() {
