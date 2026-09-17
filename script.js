@@ -1690,6 +1690,7 @@ function recoverLegacyTeachersForCurrentWeek() {
 
 function renderStudents() {
   studentRows.innerHTML = "";
+  updateTuitionFollowupButton();
 
   const entries = getFilteredStudentEntries();
 
@@ -5348,8 +5349,11 @@ function toggleTuitionFollowup() {
 }
 
 function updateTuitionFollowupButton() {
+  const followupCount = data.students.filter(student => matchesTuitionAlertFilter(student, "priority")).length;
   tuitionFollowupButton.classList.toggle("is-active", isTuitionFollowupActive);
-  tuitionFollowupButton.textContent = isTuitionFollowupActive ? "Showing Tuition Follow-up" : "Tuition Follow-up";
+  tuitionFollowupButton.textContent = isTuitionFollowupActive
+    ? `Showing Tuition Follow-up (${followupCount})`
+    : `Tuition Follow-up (${followupCount})`;
   tuitionFollowupButton.setAttribute("aria-pressed", isTuitionFollowupActive ? "true" : "false");
 }
 
@@ -5357,7 +5361,10 @@ function matchesTuitionAlertFilter(student, filterValue) {
   if (!filterValue) return true;
 
   const daysUntilDue = getDaysUntilDue(student.nextDueDate);
+  const reminder = getPaymentReminder(student);
+  const isPaymentDueNow = reminder.className === "reminder-due";
 
+  if (filterValue === "priority" && isPaymentDueNow) return true;
   if (filterValue === "none") return daysUntilDue === null;
   if (daysUntilDue === null) return false;
   if (filterValue === "priority") return daysUntilDue <= 2;
@@ -5822,6 +5829,8 @@ function compareStudentEntries(first, second, tuitionAlert = "") {
 
 function getTuitionAlertRank(student) {
   const daysUntilDue = getDaysUntilDue(student.nextDueDate);
+  const reminder = getPaymentReminder(student);
+  if (reminder.className === "reminder-due") return 0;
   if (daysUntilDue === null) return 5;
   if (daysUntilDue < 0) return 0;
   if (daysUntilDue === 0) return 1;
