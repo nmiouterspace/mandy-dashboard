@@ -235,14 +235,22 @@ const scheduleWeekNote = document.querySelector("#scheduleWeekNote");
 const previousWeek = document.querySelector("#previousWeek");
 const nextWeek = document.querySelector("#nextWeek");
 const currentWeek = document.querySelector("#currentWeek");
+const mobileTabsToggle = document.querySelector("#mobileTabsToggle");
+const mobileAccountToggle = document.querySelector("#mobileAccountToggle");
 let selectedWeekStart = getWeekStart(new Date());
 let editingAttendanceCell = null;
 let pendingLessonLogSession = null;
 let editingPaymentStudentIndex = null;
 
 document.querySelectorAll(".tab-button").forEach(button => {
-  button.addEventListener("click", () => showTab(button.dataset.tab));
+  button.addEventListener("click", () => {
+    showTab(button.dataset.tab);
+    closeMobileMenus();
+  });
 });
+
+mobileTabsToggle.addEventListener("click", () => toggleMobileMenu("tabs"));
+mobileAccountToggle.addEventListener("click", () => toggleMobileMenu("account"));
 
 document.querySelector("#addStudent").addEventListener("click", () => openStudentModal());
 document.querySelector("#clearFilters").addEventListener("click", clearStudentFilters);
@@ -6224,6 +6232,25 @@ function clearStudentFilters() {
   isTuitionFollowupActive = false;
   updateTuitionFollowupButton();
   renderStudents();
+}
+
+function toggleMobileMenu(menu) {
+  const tabsOpen = menu === "tabs" && !document.body.classList.contains("mobile-tabs-open");
+  const accountOpen = menu === "account" && !document.body.classList.contains("mobile-account-open");
+
+  document.body.classList.toggle("mobile-tabs-open", tabsOpen);
+  document.body.classList.toggle("mobile-account-open", accountOpen);
+  updateMobileMenuButtons();
+}
+
+function closeMobileMenus() {
+  document.body.classList.remove("mobile-tabs-open", "mobile-account-open");
+  updateMobileMenuButtons();
+}
+
+function updateMobileMenuButtons() {
+  mobileTabsToggle.setAttribute("aria-expanded", document.body.classList.contains("mobile-tabs-open") ? "true" : "false");
+  mobileAccountToggle.setAttribute("aria-expanded", document.body.classList.contains("mobile-account-open") ? "true" : "false");
 }
 
 loadDriveSyncSettings();

@@ -96,6 +96,10 @@ body {
   display: none;
 }
 
+.mobile-command-bar {
+  display: none;
+}
+
 main {
   width: min(1400px, 100%);
   margin: 0 auto;
@@ -2234,7 +2238,6 @@ textarea:focus {
   }
 
   .app-header,
-  .header-actions,
   .section-title,
   .section-actions {
     align-items: stretch;
@@ -2255,9 +2258,15 @@ textarea:focus {
   }
 
   .header-actions {
-    display: grid;
+    display: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+  }
+
+  body.mobile-account-open .header-actions {
+    display: grid;
   }
 
   .header-actions button,
@@ -2274,10 +2283,40 @@ textarea:focus {
     padding: 12px 10px 28px;
   }
 
+  .mobile-command-bar {
+    position: sticky;
+    top: 104px;
+    z-index: 11;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: -2px -10px 12px;
+    padding: 8px 10px;
+    background: rgba(247, 248, 244, 0.97);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .mobile-command-button {
+    min-height: 44px;
+    border-color: #b8c7c0;
+    background: #ffffff;
+    color: var(--green);
+  }
+
+  body.mobile-tabs-open #mobileTabsToggle,
+  body.mobile-account-open #mobileAccountToggle {
+    border-color: var(--green);
+    background: var(--green);
+    color: #ffffff;
+  }
+
   .tabs {
     position: sticky;
-    top: 127px;
+    top: 158px;
     z-index: 11;
+    display: none;
+    grid-template-columns: 1fr;
+    gap: 7px;
     margin: 0 -10px 14px;
     padding: 8px 10px;
     background: rgba(247, 248, 244, 0.96);
@@ -2286,12 +2325,16 @@ textarea:focus {
     -webkit-overflow-scrolling: touch;
   }
 
+  body.mobile-tabs-open .tabs {
+    display: grid;
+  }
+
   .tabs::-webkit-scrollbar {
     display: none;
   }
 
   .tab-button {
-    flex: 0 0 auto;
+    justify-content: flex-start;
     min-width: auto;
     min-height: 42px;
     padding: 0 13px;
