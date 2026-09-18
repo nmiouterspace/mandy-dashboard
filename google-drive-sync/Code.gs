@@ -55,6 +55,10 @@ function parseRequestBody(event) {
     return JSON.parse(event.parameter.request);
   }
 
+  if (event && event.parameter && Object.keys(event.parameter).length) {
+    return event.parameter;
+  }
+
   return JSON.parse((event && event.postData && event.postData.contents) || "{}");
 }
 
