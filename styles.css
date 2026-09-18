@@ -2400,7 +2400,6 @@ textarea:focus {
     -webkit-overflow-scrolling: touch;
   }
 
-  .weekly-schedule::before,
   .table-wrap::before {
     display: block;
     margin-bottom: 8px;
@@ -2411,11 +2410,62 @@ textarea:focus {
   }
 
   .schedule-matrix {
-    min-width: 1060px;
+    grid-template-columns: 44px repeat(7, minmax(40px, 1fr));
+    width: max(100%, 390px);
+    border-radius: 7px;
+    box-shadow: none;
+  }
+
+  .schedule-corner,
+  .schedule-day-header,
+  .schedule-shift-header,
+  .schedule-matrix-cell {
+    border-color: #d4ded9;
+  }
+
+  .schedule-day-header {
+    min-height: 40px;
+    gap: 1px;
+    padding: 4px 2px;
+  }
+
+  .schedule-day-header strong {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .day-date {
+    font-size: 8px;
+  }
+
+  .schedule-shift-header,
+  .schedule-matrix-cell {
+    min-height: 104px;
+    padding: 4px 3px;
+  }
+
+  .schedule-shift-header {
+    align-items: flex-start;
+  }
+
+  .schedule-shift-header strong {
+    font-size: 9px;
+    line-height: 1.15;
+  }
+
+  .schedule-shift-header span,
+  .empty-day {
+    font-size: 8px;
   }
 
   .schedule-card {
     grid-template-columns: minmax(0, 1fr);
+    margin-top: 3px;
+    border-left-width: 2px;
+    border-radius: 4px;
   }
 
   .schedule-card-side {
@@ -2423,12 +2473,32 @@ textarea:focus {
     border-top: 1px solid var(--line);
   }
 
+  .schedule-card-main {
+    padding: 4px 3px;
+  }
+
+  .schedule-card strong {
+    font-size: 9px;
+    line-height: 1.12;
+  }
+
+  .schedule-card span {
+    margin-top: 2px;
+    font-size: 8px;
+    line-height: 1.15;
+  }
+
   .teacher-input {
-    min-height: 48px;
+    min-height: 30px;
+    padding: 3px 2px;
+    font-size: 9px;
+    line-height: 1.1;
   }
 
   .done-button {
-    min-height: 38px;
+    min-height: 24px;
+    padding: 0 2px;
+    font-size: 8px;
   }
 
   .table-wrap {
