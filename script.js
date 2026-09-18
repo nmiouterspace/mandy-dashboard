@@ -7,7 +7,7 @@ const activeUserKey = "mandyEnglishActiveUser";
 const preClassRenameBackupKey = "mandyEnglishStudentSystemBackupBeforeClassRename20260722";
 
 const defaultUserAccounts = [
-  { username: "Minh", password: "123", role: "admin", mustResetPassword: true },
+  { username: "nmi.outerspace", passwordHash: "3e5b730759f524643d2b17b78ffdfae836ae709d87b6a8a3e6d0594b52e6915c", role: "admin", mustResetPassword: false },
   { username: "PChau", password: "123", role: "teacher", mustResetPassword: true },
   { username: "NChau", password: "123", role: "staff", mustResetPassword: true }
 ];
@@ -397,7 +397,11 @@ document.querySelector("#resetData").addEventListener("click", () => {
 function getUserAccounts() {
   try {
     const saved = JSON.parse(localStorage.getItem(userAccountsKey) || "null");
-    if (Array.isArray(saved) && saved.length) return normalizeUserAccounts(saved);
+    if (Array.isArray(saved) && saved.length) {
+      const accounts = migrateUserAccounts(normalizeUserAccounts(saved));
+      localStorage.setItem(userAccountsKey, JSON.stringify(accounts));
+      return accounts;
+    }
   } catch {
     // Fall through to default accounts.
   }
@@ -411,11 +415,29 @@ function normalizeUserAccounts(accounts) {
   return accounts
     .map(account => ({
       username: String(account.username || "").trim(),
-      password: String(account.password || "123"),
+      password: account.password === undefined ? "" : String(account.password),
+      passwordHash: String(account.passwordHash || ""),
       role: rolePermissions[account.role] ? account.role : "staff",
       mustResetPassword: account.mustResetPassword !== false
     }))
     .filter(account => account.username);
+}
+
+function migrateUserAccounts(accounts) {
+  const adminAccount = defaultUserAccounts[0];
+  const cleanedAccounts = accounts.filter(account => normalizeSearchText(account.username) !== "minh");
+  const existingAdmin = cleanedAccounts.find(account => normalizeSearchText(account.username) === normalizeSearchText(adminAccount.username));
+
+  if (existingAdmin) {
+    existingAdmin.password = "";
+    existingAdmin.passwordHash = adminAccount.passwordHash;
+    existingAdmin.role = "admin";
+    existingAdmin.mustResetPassword = false;
+  } else {
+    cleanedAccounts.unshift({ ...adminAccount });
+  }
+
+  return normalizeUserAccounts(cleanedAccounts);
 }
 
 function saveUserAccounts(accounts) {
@@ -438,9 +460,11 @@ function findUserAccount(username) {
   return getUserAccounts().find(account => normalizeSearchText(account.username) === normalizedUsername) || null;
 }
 
-function signInUser() {
+async function signInUser() {
   const account = findUserAccount(loginUsername.value);
-  if (!account || account.password !== loginPassword.value) {
+  const isPasswordValid = account ? await verifyAccountPassword(account, loginPassword.value) : false;
+
+  if (!account || !isPasswordValid) {
     loginError.textContent = "Wrong account or password.";
     return;
   }
@@ -456,6 +480,20 @@ function signInUser() {
   if (account.mustResetPassword || account.password === "123") {
     openPasswordResetModal(true);
   }
+}
+
+async function verifyAccountPassword(account, password) {
+  if (account.passwordHash) {
+    return account.passwordHash === await hashPassword(password);
+  }
+
+  return account.password === password;
+}
+
+async function hashPassword(password) {
+  const bytes = new TextEncoder().encode(password);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function signOutUser() {
@@ -506,6 +544,7 @@ function saveOwnPassword() {
   if (!account) return;
 
   account.password = password;
+  account.passwordHash = "";
   account.mustResetPassword = false;
   saveUserAccounts(accounts);
   closePasswordResetModal();
