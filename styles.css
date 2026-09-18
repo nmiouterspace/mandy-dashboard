@@ -1210,6 +1210,7 @@ button {
 
 .edit-attendance-button,
 .save-attendance-button,
+.note-attendance-button,
 .export-attendance-button {
   min-width: 54px;
   min-height: 30px;
@@ -1226,6 +1227,11 @@ button {
 .save-attendance-button {
   background: var(--green);
   color: #ffffff;
+}
+
+.note-attendance-button {
+  background: #fff7df;
+  color: #9a6400;
 }
 
 .export-attendance-button {

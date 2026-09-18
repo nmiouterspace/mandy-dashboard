@@ -29,7 +29,7 @@ const rolePermissions = {
   },
   staff: {
     tabs: ["scheduleTab", "dashboardTab", "studentsTab", "classesTab", "attendanceTab", "lessonLogTab", "studentProgressTab", "tuitionSlipTab"],
-    actions: ["schedule.view", "students.view", "students.edit", "payments.edit", "classes.view", "attendance.view", "lessonLog.view", "studentProgress.view", "tuitionSlip.view", "tuitionSlip.edit", "backup.import"]
+    actions: ["schedule.view", "schedule.teacher", "schedule.done", "students.view", "students.edit", "payments.edit", "classes.view", "classes.edit", "attendance.view", "attendance.note", "lessonLog.view", "lessonLog.edit", "studentProgress.view", "tuitionSlip.view", "tuitionSlip.edit", "backup.import"]
   }
 };
 
@@ -99,6 +99,7 @@ let editingStudentIndex = null;
 let editingScheduleIndex = null;
 let legacyTeachersRecovered = false;
 const editingAttendanceRows = new Set();
+const noteEditingAttendanceRows = new Set();
 const attendanceCycleViews = new Map();
 let isTuitionFollowupActive = false;
 
@@ -554,7 +555,7 @@ function applyRoleUi() {
   setActionVisible(".drive-sync-panel", can("all"));
   setActionVisible("#addStudent", can("students.edit"));
   setActionVisible("#deleteStudentModal", can("all"));
-  setActionVisible("#stopClassSchedule", can("all"));
+  setActionVisible("#stopClassSchedule", can("classes.edit") || can("all"));
 
   if (isSignedIn) {
     const activePanel = document.querySelector(".tab-panel.active");
@@ -1845,7 +1846,7 @@ function createScheduleCell(classItem, index) {
   button.type = "button";
   button.className = "schedule-button";
   button.textContent = getClassScheduleForWeek(classItem, selectedWeekStart) || classItem.schedule || "Choose schedule";
-  button.disabled = isStoppedClass(classItem) || !can("all");
+  button.disabled = isStoppedClass(classItem) || (!can("classes.edit") && !can("all"));
   button.addEventListener("click", () => openScheduleModal(index));
   cell.append(button);
   return cell;
@@ -1858,7 +1859,7 @@ function createClassActionCell(classItem, index) {
   const statusButton = document.createElement("button");
 
   actions.className = "class-action-cell";
-  if (!can("all")) {
+  if (!can("classes.edit") && !can("all")) {
     cell.textContent = "-";
     return cell;
   }
@@ -2058,15 +2059,15 @@ function updateStudent(index, key, value) {
 }
 
 function updateClass(index, key, value) {
-  if (!can("all")) return;
+  if (!can("classes.edit") && !can("all")) return;
 
   data.classes[index][key] = value;
   saveData(false);
 }
 
 function stopEditingClass() {
-  if (!can("all")) {
-    window.alert("Only Admin can stop classes.");
+  if (!can("classes.edit") && !can("all")) {
+    window.alert("Your account cannot stop classes.");
     return;
   }
 
@@ -2076,8 +2077,8 @@ function stopEditingClass() {
 }
 
 function stopClass(index) {
-  if (!can("all")) {
-    window.alert("Only Admin can stop classes.");
+  if (!can("classes.edit") && !can("all")) {
+    window.alert("Your account cannot stop classes.");
     return;
   }
 
@@ -2095,8 +2096,8 @@ function stopClass(index) {
 }
 
 function reactivateClass(index) {
-  if (!can("all")) {
-    window.alert("Only Admin can reactivate classes.");
+  if (!can("classes.edit") && !can("all")) {
+    window.alert("Your account cannot reactivate classes.");
     return;
   }
 
@@ -2114,8 +2115,8 @@ function reactivateClass(index) {
 }
 
 function renameClass(index) {
-  if (!can("all")) {
-    window.alert("Only Admin can rename classes.");
+  if (!can("classes.edit") && !can("all")) {
+    window.alert("Your account cannot rename classes.");
     return;
   }
 
@@ -2382,8 +2383,8 @@ function getLatestClassStatus(history) {
 }
 
 function openScheduleModal(index) {
-  if (!can("all")) {
-    window.alert("Only Admin can edit class schedules.");
+  if (!can("classes.edit") && !can("all")) {
+    window.alert("Your account cannot edit class schedules.");
     return;
   }
 
@@ -2443,7 +2444,7 @@ function addSchedulePickerRow(day = "Mon", startTime = "18:00", endTime = "19:00
 }
 
 function saveScheduleFromPicker() {
-  if (!can("all")) return;
+  if (!can("classes.edit") && !can("all")) return;
   if (editingScheduleIndex === null) return;
 
   const classItem = data.classes[editingScheduleIndex];
@@ -2998,13 +2999,15 @@ function createAttendanceRow(student, session, studentIndex) {
   const meta = document.createElement("span");
   const actions = document.createElement("div");
   const editButton = document.createElement("button");
+  const noteButton = document.createElement("button");
   const exportButton = document.createElement("button");
   const rowKey = getAttendanceRowKey(session, studentIndex);
   const isEditing = editingAttendanceRows.has(rowKey);
+  const isNoteEditing = noteEditingAttendanceRows.has(rowKey);
   const selectedCycleIndex = getSelectedAttendanceCycle(rowKey, student);
   const progress = createAttendanceProgress(student, session, isEditing, selectedCycleIndex);
   const cycleTabs = createAttendanceCycleTabs(rowKey, student, selectedCycleIndex);
-  const noteBlock = createAttendanceNoteField(student, selectedCycleIndex, isEditing);
+  const noteBlock = createAttendanceNoteField(student, selectedCycleIndex, isEditing || isNoteEditing);
 
   row.className = student.status === "Temporary pause" ? "attendance-row paused-student" : "attendance-row";
   row.dataset.attendanceRowKey = rowKey;
@@ -3023,6 +3026,19 @@ function createAttendanceRow(student, session, studentIndex) {
       saveAttendanceEdit(row, student, studentIndex, session, rowKey);
     } else {
       editingAttendanceRows.add(rowKey);
+      noteEditingAttendanceRows.delete(rowKey);
+      renderAttendanceBoard();
+    }
+  });
+  noteButton.type = "button";
+  noteButton.className = isNoteEditing ? "save-attendance-button" : "note-attendance-button";
+  noteButton.textContent = isNoteEditing ? "Save note" : "Note";
+  noteButton.classList.toggle("role-hidden", (!can("attendance.note") && !can("attendance.edit") && !can("all")) || isEditing);
+  noteButton.addEventListener("click", () => {
+    if (isNoteEditing) {
+      saveAttendanceNoteOnly(row, student, selectedCycleIndex, rowKey);
+    } else {
+      noteEditingAttendanceRows.add(rowKey);
       renderAttendanceBoard();
     }
   });
@@ -3032,7 +3048,7 @@ function createAttendanceRow(student, session, studentIndex) {
   exportButton.addEventListener("click", () => exportStudentAttendanceCsv(student));
 
   nameBlock.append(name, cycleTabs, meta);
-  actions.append(editButton, exportButton);
+  actions.append(editButton, noteButton, exportButton);
   row.append(nameBlock, progress, noteBlock, actions);
   return row;
 }
@@ -3378,10 +3394,21 @@ function saveAttendanceEdit(row, student, studentIndex, session, rowKey) {
 
   saveAttendanceCycleNote(student, cycleIndex, noteInput?.value || "");
   editingAttendanceRows.delete(rowKey);
+  noteEditingAttendanceRows.delete(rowKey);
   saveData(true);
   renderStudents();
   renderAttendanceBoard();
   renderFinance();
+}
+
+function saveAttendanceNoteOnly(row, student, cycleIndex, rowKey) {
+  if (!can("attendance.note") && !can("attendance.edit") && !can("all")) return;
+
+  const noteInput = row.querySelector(".attendance-note-input");
+  saveAttendanceCycleNote(student, cycleIndex, noteInput?.value || "");
+  noteEditingAttendanceRows.delete(rowKey);
+  saveData(true);
+  renderAttendanceBoard();
 }
 
 function removeAttendanceLessonDate(student, lessonIndex, cycleIndex) {
