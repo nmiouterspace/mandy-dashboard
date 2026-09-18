@@ -1,7 +1,8 @@
 const FILE_NAME = "mandy-dashboard-data.json";
 const BACKUP_FOLDER_NAME = "Mandy English Dashboard Backups";
 const SYNC_PASSWORD = "CHANGE_THIS_PASSWORD";
-const BACKUP_RETENTION_DAYS = 90;
+const BACKUP_RETENTION_DAYS = 365;
+const DAILY_BACKUP_HOUR = 4;
 
 function doPost(event) {
   try {
@@ -61,6 +62,28 @@ function saveData(payload) {
   });
 }
 
+function runDailyBackup() {
+  const file = getMainFile();
+  if (!file) {
+    return;
+  }
+
+  createBackup(file, "daily");
+  deleteOldBackups();
+}
+
+function installDailyBackupTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(trigger => trigger.getHandlerFunction() === "runDailyBackup")
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+
+  ScriptApp.newTrigger("runDailyBackup")
+    .timeBased()
+    .everyDays(1)
+    .atHour(DAILY_BACKUP_HOUR)
+    .create();
+}
+
 function getMainFile() {
   const files = DriveApp.getFilesByName(FILE_NAME);
   return files.hasNext() ? files.next() : null;
@@ -71,10 +94,11 @@ function getBackupFolder() {
   return folders.hasNext() ? folders.next() : DriveApp.createFolder(BACKUP_FOLDER_NAME);
 }
 
-function createBackup(file) {
+function createBackup(file, type) {
   const folder = getBackupFolder();
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd_HH-mm-ss");
-  folder.createFile(`mandy-dashboard-backup-${stamp}.json`, file.getBlob().getDataAsString("UTF-8"), MimeType.PLAIN_TEXT);
+  const backupType = type ? `${type}-` : "";
+  folder.createFile(`mandy-dashboard-${backupType}backup-${stamp}.json`, file.getBlob().getDataAsString("UTF-8"), MimeType.PLAIN_TEXT);
 }
 
 function deleteOldBackups() {

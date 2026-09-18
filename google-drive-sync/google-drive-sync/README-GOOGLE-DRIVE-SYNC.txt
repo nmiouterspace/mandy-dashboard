@@ -16,12 +16,14 @@ Setup:
 10. Open Mandy Dashboard > Dashboard > Google Drive Sync.
 11. Paste the Web App URL and the same sync password.
 12. Click Save sync settings.
+13. In Apps Script, select the function installDailyBackupTrigger.
+14. Click Run once and allow permissions. This installs the daily backup job.
 
 Daily workflow:
 
 - At the start of work: click Load from Drive.
 - After editing important data: click Save to Drive.
-- Before risky changes: use Export Backup too.
+- Before risky changes: ask admin to make an extra backup if needed.
 
 Important:
 
@@ -29,4 +31,6 @@ Important:
 - Google Drive stores the shared data file named mandy-dashboard-data.json.
 - The sync password is saved only in each browser's local storage.
 - Every Save to Drive creates a timestamped backup in the folder "Mandy English Dashboard Backups".
-- Backups older than 90 days are moved to trash during Save to Drive.
+- The automatic backup job creates one extra backup every day around 04:00.
+- Google Apps Script time triggers run near the selected hour, not always exactly at 04:00.
+- Backups older than 365 days are moved to trash during Save to Drive or the daily backup job.
