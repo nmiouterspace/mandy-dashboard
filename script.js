@@ -8,8 +8,8 @@ const preClassRenameBackupKey = "mandyEnglishStudentSystemBackupBeforeClassRenam
 
 const defaultUserAccounts = [
   { username: "nmi.outerspace", passwordHash: "3e5b730759f524643d2b17b78ffdfae836ae709d87b6a8a3e6d0594b52e6915c", role: "admin", mustResetPassword: false },
-  { username: "PChau", password: "123", role: "teacher", mustResetPassword: true },
-  { username: "NChau", password: "123", role: "staff", mustResetPassword: true }
+  { username: "PChau", passwordHash: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3", role: "teacher", mustResetPassword: true },
+  { username: "NChau", passwordHash: "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3", role: "staff", mustResetPassword: true }
 ];
 
 const roleLabels = {
@@ -990,7 +990,7 @@ function ensureDriveSyncSettings(settings) {
 
 async function sendDriveSyncRequest(settings, body) {
   if (body.action === "load") {
-    return loadDriveDataWithJsonp(settings, body);
+    return loadDriveDataWithFrame(settings, body);
   }
 
   if (body.action === "save") {
@@ -1000,17 +1000,16 @@ async function sendDriveSyncRequest(settings, body) {
   throw new Error("Unknown Drive sync action.");
 }
 
-async function loadDriveDataWithJsonp(settings, body) {
+async function loadDriveDataWithFrame(settings, body) {
   return new Promise((resolve, reject) => {
     const requestId = `drive-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const callbackName = `mandyDriveSyncCallback_${requestId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
-    const script = document.createElement("script");
+    const iframe = document.createElement("iframe");
     const url = new URL(settings.url);
 
     const cleanup = () => {
+      window.removeEventListener("message", handleMessage);
       window.clearTimeout(timeout);
-      script.remove();
-      delete window[callbackName];
+      iframe.remove();
     };
 
     const timeout = window.setTimeout(() => {
@@ -1018,7 +1017,10 @@ async function loadDriveDataWithJsonp(settings, body) {
       reject(new Error("Drive sync timed out. Please check the Web App URL and deployment access."));
     }, 45000);
 
-    window[callbackName] = response => {
+    const handleMessage = event => {
+      const response = event.data;
+      if (!response || response.source !== "mandy-drive-sync" || response.requestId !== requestId) return;
+
       cleanup();
       if (!response.ok) {
         reject(new Error(response.error || "Drive sync request failed."));
@@ -1028,18 +1030,21 @@ async function loadDriveDataWithJsonp(settings, body) {
       resolve(response);
     };
 
+    window.addEventListener("message", handleMessage);
+
     url.searchParams.set("action", body.action);
     url.searchParams.set("token", settings.token);
     url.searchParams.set("requestId", requestId);
-    url.searchParams.set("callback", callbackName);
 
-    script.src = url.toString();
-    script.onerror = () => {
+    iframe.src = url.toString();
+    iframe.className = "hidden-file-input";
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.addEventListener("error", () => {
       cleanup();
       reject(new Error("Cannot reach the Google Apps Script URL. Please check the Web App URL and access setting."));
-    };
+    });
 
-    document.body.append(script);
+    document.body.append(iframe);
   });
 }
 
