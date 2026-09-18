@@ -780,10 +780,11 @@ function normalizePaymentHistory(history) {
   return history
     .map((record, index) => {
       if (!record || typeof record !== "object") return null;
-      const lessons = Math.max(1, Math.floor(Number(record.lessons) || 0));
+      const packageName = record.package || record.paymentType || "Monthly";
+      const lessons = normalizePaymentRecordLessons(record.lessons, packageName);
       return {
         date: record.date || "",
-        package: record.package || "Monthly",
+        package: packageName,
         cycleIndex: Number.isFinite(Number(record.cycleIndex)) ? Number(record.cycleIndex) : index,
         lessons,
         note: repairVietnameseText(record.note || ""),
@@ -791,6 +792,13 @@ function normalizePaymentHistory(history) {
       };
     })
     .filter(record => record && record.date);
+}
+
+function normalizePaymentRecordLessons(value, packageName) {
+  const lessons = Math.floor(Number(value));
+  if (Number.isFinite(lessons) && lessons > 0) return lessons;
+  if (packageName === "Course" || packageName === "Course Dis (%)") return 24;
+  return 8;
 }
 
 function normalizeClassStatusHistory(history) {
@@ -2845,13 +2853,25 @@ function getSessionAttendancePrefix(session, student) {
 }
 
 function getNextLessonIndex(student) {
-  const totalLessons = getStudentCycleLessons(student);
-  return Math.max(0, Number(student.lessonsDone) || 0) % totalLessons;
+  const cycleIndex = getNextLessonCycleIndex(student);
+  const totalLessons = getStudentCycleLessons(student, cycleIndex);
+  return getCompletedLessonsBeforeNextLesson(student, cycleIndex, totalLessons);
 }
 
 function getNextLessonCycleIndex(student) {
-  const totalLessons = getStudentCycleLessons(student);
-  return Math.floor(Math.max(0, Number(student.lessonsDone) || 0) / totalLessons);
+  const lessonsDone = Math.max(0, Number(student.lessonsDone) || 0);
+  if (!lessonsDone) return 0;
+
+  let remainingLessons = lessonsDone;
+  let cycleIndex = 0;
+
+  while (remainingLessons >= getStudentCycleLessons(student, cycleIndex)) {
+    remainingLessons -= getStudentCycleLessons(student, cycleIndex);
+    cycleIndex += 1;
+    if (cycleIndex > 200) break;
+  }
+
+  return cycleIndex;
 }
 
 function getSessionKey(session) {
@@ -3040,9 +3060,9 @@ function createAttendanceNoteField(student, cycleIndex, isEditing) {
 }
 
 function createAttendanceProgress(student, session, isEditing, selectedCycleIndex) {
-  const totalLessons = getStudentCycleLessons(student);
-  const completedLessons = getCompletedLessonsInCurrentCycle(student, totalLessons);
-  const cycleIndex = getCurrentCycleIndex(student, totalLessons);
+  const totalLessons = getStudentCycleLessons(student, selectedCycleIndex);
+  const cycleIndex = getCurrentCycleIndex(student);
+  const completedLessons = getCompletedLessonsForCycle(student, selectedCycleIndex);
   const wrapper = document.createElement("div");
 
   wrapper.className = `attendance-progress ${totalLessons === 24 ? "course-attendance" : "monthly-attendance"}`;
@@ -3082,7 +3102,6 @@ function createAttendanceProgress(student, session, isEditing, selectedCycleInde
 
 function createAttendanceCycleTabs(rowKey, student, selectedCycleIndex) {
   const tabs = document.createElement("div");
-  const totalLessons = getStudentCycleLessons(student);
   const hasManualCycleView = attendanceCycleViews.has(rowKey);
   const maxCycleCount = getAttendanceCycleCount(student);
 
@@ -3117,7 +3136,7 @@ function createAttendanceCycleButton(label, isActive, onClick) {
 
 function getSelectedAttendanceCycle(rowKey, student) {
   if (attendanceCycleViews.has(rowKey)) return attendanceCycleViews.get(rowKey);
-  return getCurrentCycleIndex(student, getStudentCycleLessons(student));
+  return getCurrentCycleIndex(student);
 }
 
 function getAttendanceRowKey(session, studentIndex) {
@@ -3145,11 +3164,8 @@ function saveAttendanceCycleNote(student, cycleIndex, note) {
 }
 
 function getAttendanceCycleRangeText(student, session, cycleIndex) {
-  const totalLessons = getStudentCycleLessons(student);
-  const currentCycleIndex = getCurrentCycleIndex(student, totalLessons);
-  const completedLessons = cycleIndex === currentCycleIndex
-    ? getCompletedLessonsInCurrentCycle(student, totalLessons)
-    : getAttendanceCycleDateCount(student, cycleIndex);
+  const totalLessons = getStudentCycleLessons(student, cycleIndex);
+  const completedLessons = getCompletedLessonsForCycle(student, cycleIndex);
   const startDate = getAttendanceCycleStartDate(student, session, cycleIndex);
   const endDate = completedLessons === totalLessons
     ? getAttendanceDateLabel(session, student, totalLessons - 1, cycleIndex) || "..."
@@ -3166,16 +3182,15 @@ function getAttendanceCycleStartDate(student, session, cycleIndex) {
   const firstLessonDate = getAttendanceDateLabel(session, student, 0, cycleIndex);
   if (firstLessonDate) return firstLessonDate;
 
-  const currentCycleIndex = getCurrentCycleIndex(student, getStudentCycleLessons(student));
+  const currentCycleIndex = getCurrentCycleIndex(student);
   if (cycleIndex === currentCycleIndex) return formatStoredDate(student.lastPaymentDate);
 
   return "";
 }
 
 function getAttendanceCycleCount(student) {
-  const totalLessons = getStudentCycleLessons(student);
   return Math.max(
-    getCurrentCycleIndex(student, totalLessons) + 1,
+    getCurrentCycleIndex(student) + 1,
     getPaidCycleCount(student),
     1
   );
@@ -3201,7 +3216,7 @@ function getPaymentRecordForCycle(student, cycleIndex) {
 }
 
 function getAttendanceCycleDateCount(student, cycleIndex) {
-  const totalLessons = getStudentCycleLessons(student);
+  const totalLessons = getStudentCycleLessons(student, cycleIndex);
   let count = 0;
 
   for (let lessonIndex = 0; lessonIndex < totalLessons; lessonIndex += 1) {
@@ -3212,6 +3227,10 @@ function getAttendanceCycleDateCount(student, cycleIndex) {
 }
 
 function getCompletedLessonsInCurrentCycle(student, totalLessons) {
+  if (normalizePaymentHistory(student.paymentHistory).length) {
+    return getCompletedLessonsForCycle(student, getCurrentCycleIndex(student));
+  }
+
   const lessonsDone = Math.max(0, Number(student.lessonsDone) || 0);
   if (!lessonsDone) return 0;
 
@@ -3220,10 +3239,51 @@ function getCompletedLessonsInCurrentCycle(student, totalLessons) {
 }
 
 function getCurrentCycleIndex(student, totalLessons) {
+  const normalizedTotalLessons = totalLessons || getStudentCycleLessons(student);
+  const lessonsDone = Math.max(0, Number(student.lessonsDone) || 0);
+  if (!lessonsDone) return 0;
+  const history = normalizePaymentHistory(student.paymentHistory);
+
+  if (history.length) {
+    let remainingLessons = lessonsDone;
+    const maxCycleIndex = Math.max(...history.map(record => record.cycleIndex), 0);
+
+    for (let cycleIndex = 0; cycleIndex <= maxCycleIndex; cycleIndex += 1) {
+      const cycleLessons = getStudentCycleLessons(student, cycleIndex);
+      if (remainingLessons <= cycleLessons) return cycleIndex;
+      remainingLessons -= cycleLessons;
+    }
+
+    const fallbackLessons = getStudentCycleLessons(student);
+    return maxCycleIndex + Math.floor((remainingLessons - 1) / fallbackLessons) + 1;
+  }
+
+  return Math.floor((lessonsDone - 1) / normalizedTotalLessons);
+}
+
+function getCompletedLessonsForCycle(student, cycleIndex) {
   const lessonsDone = Math.max(0, Number(student.lessonsDone) || 0);
   if (!lessonsDone) return 0;
 
-  return Math.floor((lessonsDone - 1) / totalLessons);
+  const remainingLessons = lessonsDone - getCompletedLessonsBeforeCycle(student, cycleIndex);
+
+  if (remainingLessons <= 0) return 0;
+  return Math.min(remainingLessons, getStudentCycleLessons(student, cycleIndex));
+}
+
+function getCompletedLessonsBeforeCycle(student, cycleIndex) {
+  let completedBeforeCycle = 0;
+
+  for (let index = 0; index < cycleIndex; index += 1) {
+    completedBeforeCycle += getStudentCycleLessons(student, index);
+  }
+
+  return completedBeforeCycle;
+}
+
+function getCompletedLessonsBeforeNextLesson(student, cycleIndex, totalLessons) {
+  const completedLessons = getCompletedLessonsForCycle(student, cycleIndex);
+  return completedLessons >= totalLessons ? 0 : completedLessons;
 }
 
 function toggleAttendanceDot(attendanceKey) {
@@ -3290,9 +3350,8 @@ function closeAttendanceDateModal() {
 }
 
 function saveAttendanceEdit(row, student, studentIndex, session, rowKey) {
-  const totalLessons = getStudentCycleLessons(student);
   const cycleIndex = getSelectedAttendanceCycle(rowKey, student);
-  const currentCycleIndex = getCurrentCycleIndex(student, totalLessons);
+  const currentCycleIndex = getCurrentCycleIndex(student);
   const noteInput = row.querySelector(".attendance-note-input");
   let datedLessons = 0;
 
@@ -3314,7 +3373,7 @@ function saveAttendanceEdit(row, student, studentIndex, session, rowKey) {
   });
 
   if (cycleIndex === currentCycleIndex) {
-    data.students[studentIndex].lessonsDone = cycleIndex * totalLessons + datedLessons;
+    data.students[studentIndex].lessonsDone = getCompletedLessonsBeforeCycle(student, cycleIndex) + datedLessons;
   }
 
   saveAttendanceCycleNote(student, cycleIndex, noteInput?.value || "");
@@ -3329,6 +3388,26 @@ function removeAttendanceLessonDate(student, lessonIndex, cycleIndex) {
   Object.keys(data.attendance).forEach(key => {
     if (isAttendanceKeyForStudentLesson(key, student, lessonIndex, cycleIndex)) delete data.attendance[key];
   });
+}
+
+function removeAttendanceCycle(student, cycleIndex) {
+  Object.keys(data.attendance).forEach(key => {
+    const parts = key.split("|");
+    const keyStudentName = parts[4] || "";
+    const keyCycleIndex = parts.length >= 7 ? Number(parts[5]) : 0;
+
+    if (
+      normalizeSearchText(keyStudentName) === normalizeSearchText(student.name)
+      && keyCycleIndex === Number(cycleIndex)
+    ) {
+      delete data.attendance[key];
+    }
+  });
+}
+
+function removeAttendanceCycleNote(student, cycleIndex) {
+  if (!data.attendanceNotes) return;
+  delete data.attendanceNotes[getAttendanceNoteKey(student, cycleIndex)];
 }
 
 function getAttendanceDateLabel(session, student, lessonIndex, cycleIndex = getCurrentCycleIndex(student, getStudentCycleLessons(student))) {
@@ -3384,20 +3463,20 @@ function isAttendanceKeyForStudentLessonAnyClass(key, student, lessonIndex, cycl
 }
 
 function exportStudentAttendanceCsv(student) {
-  const totalLessons = getStudentCycleLessons(student);
   const cycleCount = getAttendanceCycleCount(student);
   const rows = [
     ["Student Name", student.name],
     ["Class", student.className],
     ["Payment Type", formatPaymentType(student)],
     ["Lessons Done", student.lessonsDone],
-    ["Total Lessons", totalLessons],
+    ["Current Cycle Lessons", getStudentCycleLessons(student, getCurrentCycleIndex(student))],
     ["Paid Lessons", getStudentPaidLessons(student)],
     [],
     ["Cycle", "Payment", "Lesson", "Date", "Status"]
   ];
 
   for (let cycleIndex = 0; cycleIndex < cycleCount; cycleIndex += 1) {
+    const totalLessons = getStudentCycleLessons(student, cycleIndex);
     for (let lessonIndex = 0; lessonIndex < totalLessons; lessonIndex += 1) {
       const dateValue = getAttendanceDateValue(null, student, lessonIndex, cycleIndex);
       rows.push([
@@ -4423,8 +4502,8 @@ function buildAttendanceAuditReply(normalizedMessage) {
     return "Bạn gõ rõ hơn giúp mình tên học viên nhé. Ví dụ: attendance Kem.";
   }
 
-  const totalLessons = getStudentCycleLessons(student);
-  const currentCycleIndex = getCurrentCycleIndex(student, totalLessons);
+  const currentCycleIndex = getCurrentCycleIndex(student);
+  const currentCycleLessons = getStudentCycleLessons(student, currentCycleIndex);
   const records = getStudentAttendanceAuditRecords(student.name);
   const currentClassRecords = records.filter(record =>
     normalizeSearchText(record.className) === normalizeSearchText(student.className)
@@ -4442,8 +4521,8 @@ function buildAttendanceAuditReply(normalizedMessage) {
     issues.push(`${otherClassRecords.length} attendance records are still under another class: ${classes}.`);
   }
 
-  if (currentCycleRecords.length !== getCompletedLessonsInCurrentCycle(student, totalLessons)) {
-    issues.push(`Current cycle count looks different: attendance dates ${currentCycleRecords.length}, lessonsDone in Student List ${getCompletedLessonsInCurrentCycle(student, totalLessons)}.`);
+  if (currentCycleRecords.length !== getCompletedLessonsInCurrentCycle(student, currentCycleLessons)) {
+    issues.push(`Current cycle count looks different: attendance dates ${currentCycleRecords.length}, lessonsDone in Student List ${getCompletedLessonsInCurrentCycle(student, currentCycleLessons)}.`);
   }
 
   if (duplicateDates.length) issues.push(`Duplicate dates: ${duplicateDates.map(formatStoredDate).join(", ")}.`);
@@ -4452,7 +4531,7 @@ function buildAttendanceAuditReply(normalizedMessage) {
   const datesByCycle = groupAttendanceDatesByCycle(currentClassRecords);
   const cycleSummary = Object.entries(datesByCycle)
     .sort(([first], [second]) => Number(first) - Number(second))
-    .map(([cycleIndex, dates]) => `${getCycleLetter(Number(cycleIndex))}: ${dates.length}/${totalLessons} (${dates.map(formatStoredDate).join(", ") || "no dates"})`)
+    .map(([cycleIndex, dates]) => `${getCycleLetter(Number(cycleIndex))}: ${dates.length}/${getStudentCycleLessons(student, Number(cycleIndex))} (${dates.map(formatStoredDate).join(", ") || "no dates"})`)
     .join(" | ");
 
   return [
@@ -4616,7 +4695,8 @@ function openPaymentModal(index) {
 
   editingPaymentStudentIndex = index;
   const student = data.students[index];
-  const totalLessons = getStudentCycleLessons(student);
+  const currentCycleIndex = getCurrentCycleIndex(student);
+  const totalLessons = getStudentCycleLessons(student, currentCycleIndex);
   const paymentType = normalizePaymentType(student.paymentType);
 
   paymentForm.reset();
@@ -4625,7 +4705,7 @@ function openPaymentModal(index) {
   paymentLessons.value = paymentPackage.value === "Course" ? 24 : totalLessons || 8;
   paymentStudentSummary.innerHTML = `
     <strong>${escapeHtml(student.name)} - ${escapeHtml(student.className)}</strong>
-    <span>Done: ${student.lessonsDone} | Paid: ${getStudentPaidLessons(student)} | Current cycle: ${getCycleLetter(getCurrentCycleIndex(student, totalLessons))}</span>
+    <span>Done: ${student.lessonsDone} | Paid: ${getStudentPaidLessons(student)} | Current cycle: ${getCycleLetter(currentCycleIndex)} (${totalLessons} lessons)</span>
   `;
   renderPaymentHistory(student);
   paymentModal.classList.add("open");
@@ -4651,9 +4731,10 @@ function saveStudentPayment() {
   const student = data.students[editingPaymentStudentIndex];
   const lessons = Math.max(1, Math.floor(Number(paymentLessons.value) || 0));
   const cycleIndex = getNextPaymentCycleIndex(student);
+  const packageName = paymentPackage.value;
   const paymentRecord = {
     date: paymentDate.value || formatDateValue(new Date()),
-    package: paymentPackage.value,
+    package: packageName,
     cycleIndex,
     lessons,
     note: paymentNote.value.trim(),
@@ -4664,7 +4745,9 @@ function saveStudentPayment() {
   student.paymentHistory.push(paymentRecord);
   student.paidLessons = getStudentPaidLessons(student) + lessons;
   student.lastPaymentDate = paymentRecord.date;
-  student.nextDueDate = getNextDueDateFromPayment(paymentRecord.date, student.paymentType);
+  student.paymentType = packageName === "Course" ? "Course" : packageName === "Monthly" ? "Monthly" : student.paymentType;
+  student.totalLessons = lessons;
+  student.nextDueDate = getNextDueDateFromPayment(paymentRecord.date, packageName);
   data.students[editingPaymentStudentIndex] = student;
 
   normalizeData();
@@ -4686,21 +4769,97 @@ function renderPaymentHistory(student) {
     return;
   }
 
+  const latestCycleIndex = Math.max(...history.map(record => Number(record.cycleIndex) || 0));
+
   [...history].reverse().forEach(record => {
     const row = document.createElement("div");
+    const details = document.createElement("div");
+    const title = document.createElement("strong");
+    const meta = document.createElement("span");
+
     row.className = "payment-history-row";
-    row.innerHTML = `
-      <strong>${getCycleLetter(record.cycleIndex)} | ${formatStoredDate(record.date)}</strong>
-      <span>${escapeHtml(record.package)} - ${record.lessons} lessons${record.note ? ` | ${escapeHtml(record.note)}` : ""}</span>
-    `;
+    details.className = "payment-history-details";
+    title.textContent = `${getCycleLetter(record.cycleIndex)} | ${formatStoredDate(record.date)}`;
+    meta.textContent = `${record.package} - ${record.lessons} lessons${record.note ? ` | ${record.note}` : ""}`;
+    details.append(title, meta);
+    row.append(details);
+
+    if ((can("payments.edit") || can("all")) && Number(record.cycleIndex) === latestCycleIndex) {
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "payment-history-delete";
+      deleteButton.textContent = "Delete";
+      deleteButton.addEventListener("click", () => deleteLatestPaymentCycle(record.cycleIndex));
+      row.append(deleteButton);
+    }
+
     paymentHistoryList.append(row);
   });
+}
+
+function deleteLatestPaymentCycle(cycleIndex) {
+  if (!can("payments.edit") && !can("all")) return;
+  if (editingPaymentStudentIndex === null) return;
+
+  const student = data.students[editingPaymentStudentIndex];
+  const history = normalizePaymentHistory(student.paymentHistory);
+  const latestCycleIndex = history.length ? Math.max(...history.map(record => Number(record.cycleIndex) || 0)) : -1;
+
+  if (Number(cycleIndex) !== latestCycleIndex) {
+    window.alert("Only the latest payment cycle can be deleted safely.");
+    return;
+  }
+
+  const record = history.find(item => Number(item.cycleIndex) === Number(cycleIndex));
+  if (!record) return;
+
+  const attendanceCount = getAttendanceCycleDateCount(student, cycleIndex);
+  const warning = attendanceCount
+    ? `Delete cycle ${getCycleLetter(cycleIndex)}?\n\nThis cycle has ${attendanceCount} attendance date(s). Deleting it will also remove those dates and the cycle note.`
+    : `Delete cycle ${getCycleLetter(cycleIndex)}?\n\nThis will remove the latest payment record and reduce paid lessons.`;
+
+  if (!window.confirm(warning)) return;
+
+  student.paymentHistory = history.filter(item => Number(item.cycleIndex) !== Number(cycleIndex));
+  student.paidLessons = Math.max(0, getStudentPaidLessons(student) - record.lessons);
+  student.lessonsDone = Math.max(0, Number(student.lessonsDone) || 0) - attendanceCount;
+  removeAttendanceCycle(student, cycleIndex);
+  removeAttendanceCycleNote(student, cycleIndex);
+  refreshStudentPaymentFromHistory(student);
+  data.students[editingPaymentStudentIndex] = student;
+
+  normalizeData();
+  saveData(true);
+  renderPaymentHistory(data.students[editingPaymentStudentIndex]);
+  renderStudents();
+  renderAttendanceBoard();
+  renderFinance();
 }
 
 function getNextPaymentCycleIndex(student) {
   const history = normalizePaymentHistory(student.paymentHistory);
   if (history.length) return Math.max(...history.map(record => record.cycleIndex)) + 1;
   return Math.floor(getStudentPaidLessons(student) / getStudentCycleLessons(student));
+}
+
+function refreshStudentPaymentFromHistory(student) {
+  const history = normalizePaymentHistory(student.paymentHistory);
+  const latestRecord = history
+    .slice()
+    .sort((first, second) => Number(first.cycleIndex) - Number(second.cycleIndex))
+    .at(-1);
+
+  if (!latestRecord) {
+    student.lastPaymentDate = "";
+    student.nextDueDate = "";
+    return;
+  }
+
+  student.lastPaymentDate = latestRecord.date;
+  student.totalLessons = latestRecord.lessons;
+  if (latestRecord.package === "Course") student.paymentType = "Course";
+  if (latestRecord.package === "Monthly") student.paymentType = "Monthly";
+  student.nextDueDate = getNextDueDateFromPayment(latestRecord.date, latestRecord.package);
 }
 
 function getNextDueDateFromPayment(dateValue, paymentType) {
@@ -5094,12 +5253,21 @@ function normalizeTotalLessons(value, paymentType) {
 }
 
 function normalizePaidLessons(value, totalLessons, paymentType) {
+  if (value === "" || value === null || value === undefined) {
+    return normalizeTotalLessons(totalLessons, paymentType);
+  }
+
   const paidLessons = Math.floor(Number(value));
-  if (Number.isFinite(paidLessons) && paidLessons > 0) return paidLessons;
+  if (Number.isFinite(paidLessons) && paidLessons >= 0) return paidLessons;
   return normalizeTotalLessons(totalLessons, paymentType);
 }
 
-function getStudentCycleLessons(student) {
+function getStudentCycleLessons(student, cycleIndex = null) {
+  if (cycleIndex !== null && cycleIndex !== undefined) {
+    const record = getPaymentRecordForCycle(student, cycleIndex);
+    if (record?.lessons) return normalizePaymentRecordLessons(record.lessons, record.package);
+  }
+
   return normalizeTotalLessons(student.totalLessons, student.paymentType);
 }
 

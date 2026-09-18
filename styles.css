@@ -1849,17 +1849,33 @@ button {
 }
 
 .payment-history-row {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfcfa;
 }
 
+.payment-history-details {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .payment-history-row span {
   color: var(--muted);
   font-size: 13px;
+}
+
+.payment-history-delete {
+  min-height: 30px;
+  padding: 0 10px;
+  background: #fdecec;
+  color: var(--red);
+  font-size: 12px;
 }
 
 .table-wrap {
