@@ -989,18 +989,28 @@ function ensureDriveSyncSettings(settings) {
 }
 
 async function sendDriveSyncRequest(settings, body) {
+  if (body.action === "load") {
+    return loadDriveDataWithJsonp(settings, body);
+  }
+
+  if (body.action === "save") {
+    return saveDriveDataWithoutCors(settings, body);
+  }
+
+  throw new Error("Unknown Drive sync action.");
+}
+
+async function loadDriveDataWithJsonp(settings, body) {
   return new Promise((resolve, reject) => {
     const requestId = `drive-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const iframeName = `${requestId}-frame`;
-    const iframe = document.createElement("iframe");
-    const form = document.createElement("form");
-    const input = document.createElement("input");
+    const callbackName = `mandyDriveSyncCallback_${requestId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+    const script = document.createElement("script");
+    const url = new URL(settings.url);
 
     const cleanup = () => {
-      window.removeEventListener("message", handleMessage);
       window.clearTimeout(timeout);
-      iframe.remove();
-      form.remove();
+      script.remove();
+      delete window[callbackName];
     };
 
     const timeout = window.setTimeout(() => {
@@ -1008,10 +1018,7 @@ async function sendDriveSyncRequest(settings, body) {
       reject(new Error("Drive sync timed out. Please check the Web App URL and deployment access."));
     }, 45000);
 
-    const handleMessage = event => {
-      const response = event.data;
-      if (!response || response.source !== "mandy-drive-sync" || response.requestId !== requestId) return;
-
+    window[callbackName] = response => {
       cleanup();
       if (!response.ok) {
         reject(new Error(response.error || "Drive sync request failed."));
@@ -1021,29 +1028,43 @@ async function sendDriveSyncRequest(settings, body) {
       resolve(response);
     };
 
-    window.addEventListener("message", handleMessage);
+    url.searchParams.set("action", body.action);
+    url.searchParams.set("token", settings.token);
+    url.searchParams.set("requestId", requestId);
+    url.searchParams.set("callback", callbackName);
 
-    iframe.name = iframeName;
-    iframe.className = "hidden-file-input";
-    iframe.setAttribute("aria-hidden", "true");
+    script.src = url.toString();
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Cannot reach the Google Apps Script URL. Please check the Web App URL and access setting."));
+    };
 
-    form.method = "POST";
-    form.action = settings.url;
-    form.target = iframeName;
-    form.className = "hidden-file-input";
-
-    input.type = "hidden";
-    input.name = "request";
-    input.value = JSON.stringify({
-      requestId,
-      token: settings.token,
-      ...body
-    });
-
-    form.append(input);
-    document.body.append(iframe, form);
-    form.submit();
+    document.body.append(script);
   });
+}
+
+async function saveDriveDataWithoutCors(settings, body) {
+  const request = JSON.stringify({
+    requestId: `drive-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    token: settings.token,
+    ...body
+  });
+  const formData = new URLSearchParams();
+  formData.set("request", request);
+
+  await fetch(settings.url, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+    },
+    body: formData.toString()
+  });
+
+  return {
+    ok: true,
+    savedAt: new Date().toISOString()
+  };
 }
 
 function rememberDriveSync(settings) {

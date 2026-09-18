@@ -4,6 +4,27 @@ const SYNC_PASSWORD = "CHANGE_THIS_PASSWORD";
 const BACKUP_RETENTION_DAYS = 365;
 const DAILY_BACKUP_HOUR = 4;
 
+function doGet(event) {
+  let requestId = "";
+
+  try {
+    const body = parseRequestBody(event);
+    requestId = body.requestId || "";
+
+    if (body.token !== SYNC_PASSWORD) {
+      return clientResponse({ ok: false, error: "Wrong sync password." }, body.callback, requestId);
+    }
+
+    if (body.action === "load") {
+      return loadData(requestId, body.callback);
+    }
+
+    return clientResponse({ ok: false, error: "Unknown sync action." }, body.callback, requestId);
+  } catch (error) {
+    return clientResponse({ ok: false, error: String(error && error.message ? error.message : error) }, "", requestId);
+  }
+}
+
 function doPost(event) {
   let requestId = "";
 
@@ -12,20 +33,20 @@ function doPost(event) {
     requestId = body.requestId || "";
 
     if (body.token !== SYNC_PASSWORD) {
-      return syncResponse({ ok: false, error: "Wrong sync password." }, requestId);
+      return clientResponse({ ok: false, error: "Wrong sync password." }, body.callback, requestId);
     }
 
     if (body.action === "load") {
-      return loadData(requestId);
+      return loadData(requestId, body.callback);
     }
 
     if (body.action === "save") {
-      return saveData(body.payload, requestId);
+      return saveData(body.payload, requestId, body.callback);
     }
 
-    return syncResponse({ ok: false, error: "Unknown sync action." }, requestId);
+    return clientResponse({ ok: false, error: "Unknown sync action." }, body.callback, requestId);
   } catch (error) {
-    return syncResponse({ ok: false, error: String(error && error.message ? error.message : error) }, requestId);
+    return clientResponse({ ok: false, error: String(error && error.message ? error.message : error) }, "", requestId);
   }
 }
 
@@ -37,24 +58,24 @@ function parseRequestBody(event) {
   return JSON.parse((event && event.postData && event.postData.contents) || "{}");
 }
 
-function loadData(requestId) {
+function loadData(requestId, callback) {
   const file = getMainFile();
   if (!file) {
-    return syncResponse({ ok: false, error: "No Mandy dashboard data file exists yet. Save to Drive first." }, requestId);
+    return clientResponse({ ok: false, error: "No Mandy dashboard data file exists yet. Save to Drive first." }, callback, requestId);
   }
 
   const saved = JSON.parse(file.getBlob().getDataAsString("UTF-8"));
-  return syncResponse({
+  return clientResponse({
     ok: true,
     data: saved.data || saved,
     exportedAt: saved.exportedAt || "",
     updatedAt: file.getLastUpdated().toISOString()
-  }, requestId);
+  }, callback, requestId);
 }
 
-function saveData(payload, requestId) {
+function saveData(payload, requestId, callback) {
   if (!payload || !payload.data || !Array.isArray(payload.data.students) || !Array.isArray(payload.data.classes)) {
-    return syncResponse({ ok: false, error: "Invalid Mandy dashboard data." }, requestId);
+    return clientResponse({ ok: false, error: "Invalid Mandy dashboard data." }, callback, requestId);
   }
 
   const file = getMainFile();
@@ -68,10 +89,10 @@ function saveData(payload, requestId) {
   }
 
   deleteOldBackups();
-  return syncResponse({
+  return clientResponse({
     ok: true,
     savedAt: new Date().toISOString()
-  }, requestId);
+  }, callback, requestId);
 }
 
 function runDailyBackup() {
@@ -132,7 +153,14 @@ function jsonResponse(payload) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function syncResponse(payload, requestId) {
+function clientResponse(payload, callback, requestId) {
+  if (callback) {
+    return jsonpResponse({
+      requestId,
+      ...payload
+    }, callback);
+  }
+
   if (!requestId) {
     return jsonResponse(payload);
   }
@@ -142,6 +170,17 @@ function syncResponse(payload, requestId) {
     requestId,
     ...payload
   });
+}
+
+function jsonpResponse(payload, callback) {
+  const safeCallback = /^[a-zA-Z_$][\w$]*$/.test(callback) ? callback : "";
+  if (!safeCallback) {
+    return jsonResponse({ ok: false, error: "Invalid callback." });
+  }
+
+  return ContentService
+    .createTextOutput(`${safeCallback}(${JSON.stringify(payload).replace(/</g, "\\u003c")});`)
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 
 function htmlResponse(payload) {
