@@ -998,7 +998,7 @@ function ensureDriveSyncSettings(settings) {
 
 async function sendDriveSyncRequest(settings, body) {
   if (body.action === "load") {
-    return loadDriveDataWithJsonp(settings, body);
+    return loadDriveDataWithIframeGet(settings, body);
   }
 
   if (body.action === "save") {
@@ -1008,17 +1008,15 @@ async function sendDriveSyncRequest(settings, body) {
   throw new Error("Unknown Drive sync action.");
 }
 
-async function loadDriveDataWithJsonp(settings, body) {
+async function loadDriveDataWithIframeGet(settings, body) {
   return new Promise((resolve, reject) => {
     const requestId = `drive-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const callbackName = `mandyDriveSyncCallback_${requestId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
-    const script = document.createElement("script");
-    const url = new URL(settings.url);
+    const iframe = document.createElement("iframe");
 
     const cleanup = () => {
+      window.removeEventListener("message", handleMessage);
       window.clearTimeout(timeout);
-      script.remove();
-      delete window[callbackName];
+      iframe.remove();
     };
 
     const timeout = window.setTimeout(() => {
@@ -1026,7 +1024,10 @@ async function loadDriveDataWithJsonp(settings, body) {
       reject(new Error("Drive sync timed out. Please check the Web App URL and deployment access."));
     }, 45000);
 
-    window[callbackName] = response => {
+    const handleMessage = event => {
+      const response = event.data;
+      if (!response || response.source !== "mandy-drive-sync" || response.requestId !== requestId) return;
+
       cleanup();
       if (!response.ok) {
         reject(new Error(response.error || "Drive sync request failed."));
@@ -1036,18 +1037,24 @@ async function loadDriveDataWithJsonp(settings, body) {
       resolve(response);
     };
 
-    url.searchParams.set("action", body.action);
-    url.searchParams.set("token", settings.token);
-    url.searchParams.set("requestId", requestId);
-    url.searchParams.set("callback", callbackName);
+    window.addEventListener("message", handleMessage);
 
-    script.src = url.toString();
-    script.onerror = () => {
+    iframe.className = "hidden-file-input";
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.addEventListener("error", () => {
       cleanup();
       reject(new Error("Cannot reach the Google Apps Script URL. Please check the Web App URL and access setting."));
-    };
+    });
 
-    document.body.append(script);
+    const request = JSON.stringify({
+      requestId,
+      token: settings.token,
+      ...body
+    });
+    const separator = settings.url.includes("?") ? "&" : "?";
+    iframe.src = `${settings.url}${separator}request=${encodeURIComponent(request)}`;
+
+    document.body.append(iframe);
   });
 }
 
