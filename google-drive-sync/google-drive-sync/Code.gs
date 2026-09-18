@@ -5,44 +5,56 @@ const BACKUP_RETENTION_DAYS = 365;
 const DAILY_BACKUP_HOUR = 4;
 
 function doPost(event) {
+  let requestId = "";
+
   try {
-    const body = JSON.parse(event.postData.contents || "{}");
+    const body = parseRequestBody(event);
+    requestId = body.requestId || "";
+
     if (body.token !== SYNC_PASSWORD) {
-      return jsonResponse({ ok: false, error: "Wrong sync password." });
+      return syncResponse({ ok: false, error: "Wrong sync password." }, requestId);
     }
 
     if (body.action === "load") {
-      return loadData();
+      return loadData(requestId);
     }
 
     if (body.action === "save") {
-      return saveData(body.payload);
+      return saveData(body.payload, requestId);
     }
 
-    return jsonResponse({ ok: false, error: "Unknown sync action." });
+    return syncResponse({ ok: false, error: "Unknown sync action." }, requestId);
   } catch (error) {
-    return jsonResponse({ ok: false, error: String(error && error.message ? error.message : error) });
+    return syncResponse({ ok: false, error: String(error && error.message ? error.message : error) }, requestId);
   }
 }
 
-function loadData() {
+function parseRequestBody(event) {
+  if (event && event.parameter && event.parameter.request) {
+    return JSON.parse(event.parameter.request);
+  }
+
+  return JSON.parse((event && event.postData && event.postData.contents) || "{}");
+}
+
+function loadData(requestId) {
   const file = getMainFile();
   if (!file) {
-    return jsonResponse({ ok: false, error: "No Mandy dashboard data file exists yet. Save to Drive first." });
+    return syncResponse({ ok: false, error: "No Mandy dashboard data file exists yet. Save to Drive first." }, requestId);
   }
 
   const saved = JSON.parse(file.getBlob().getDataAsString("UTF-8"));
-  return jsonResponse({
+  return syncResponse({
     ok: true,
     data: saved.data || saved,
     exportedAt: saved.exportedAt || "",
     updatedAt: file.getLastUpdated().toISOString()
-  });
+  }, requestId);
 }
 
-function saveData(payload) {
+function saveData(payload, requestId) {
   if (!payload || !payload.data || !Array.isArray(payload.data.students) || !Array.isArray(payload.data.classes)) {
-    return jsonResponse({ ok: false, error: "Invalid Mandy dashboard data." });
+    return syncResponse({ ok: false, error: "Invalid Mandy dashboard data." }, requestId);
   }
 
   const file = getMainFile();
@@ -56,10 +68,10 @@ function saveData(payload) {
   }
 
   deleteOldBackups();
-  return jsonResponse({
+  return syncResponse({
     ok: true,
     savedAt: new Date().toISOString()
-  });
+  }, requestId);
 }
 
 function runDailyBackup() {
@@ -118,4 +130,25 @@ function jsonResponse(payload) {
   return ContentService
     .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function syncResponse(payload, requestId) {
+  if (!requestId) {
+    return jsonResponse(payload);
+  }
+
+  return htmlResponse({
+    source: "mandy-drive-sync",
+    requestId,
+    ...payload
+  });
+}
+
+function htmlResponse(payload) {
+  const message = JSON.stringify(payload).replace(/</g, "\\u003c");
+  const html = `<!doctype html><html><body><script>window.parent.postMessage(${message}, "*");</script></body></html>`;
+
+  return HtmlService
+    .createHtmlOutput(html)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

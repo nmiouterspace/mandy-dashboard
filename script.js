@@ -989,28 +989,61 @@ function ensureDriveSyncSettings(settings) {
 }
 
 async function sendDriveSyncRequest(settings, body) {
-  const response = await fetch(settings.url, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({
+  return new Promise((resolve, reject) => {
+    const requestId = `drive-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const iframeName = `${requestId}-frame`;
+    const iframe = document.createElement("iframe");
+    const form = document.createElement("form");
+    const input = document.createElement("input");
+
+    const cleanup = () => {
+      window.removeEventListener("message", handleMessage);
+      window.clearTimeout(timeout);
+      iframe.remove();
+      form.remove();
+    };
+
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Drive sync timed out. Please check the Web App URL and deployment access."));
+    }, 45000);
+
+    const handleMessage = event => {
+      const response = event.data;
+      if (!response || response.source !== "mandy-drive-sync" || response.requestId !== requestId) return;
+
+      cleanup();
+      if (!response.ok) {
+        reject(new Error(response.error || "Drive sync request failed."));
+        return;
+      }
+
+      resolve(response);
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    iframe.name = iframeName;
+    iframe.className = "hidden-file-input";
+    iframe.setAttribute("aria-hidden", "true");
+
+    form.method = "POST";
+    form.action = settings.url;
+    form.target = iframeName;
+    form.className = "hidden-file-input";
+
+    input.type = "hidden";
+    input.name = "request";
+    input.value = JSON.stringify({
+      requestId,
       token: settings.token,
       ...body
-    })
+    });
+
+    form.append(input);
+    document.body.append(iframe, form);
+    form.submit();
   });
-  const text = await response.text();
-  let parsed;
-
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error("The sync server returned an unreadable response.");
-  }
-
-  if (!response.ok || !parsed.ok) {
-    throw new Error(parsed.error || "Drive sync request failed.");
-  }
-
-  return parsed;
 }
 
 function rememberDriveSync(settings) {
