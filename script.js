@@ -25,11 +25,11 @@ const rolePermissions = {
   },
   teacher: {
     tabs: ["scheduleTab", "attendanceTab", "lessonLogTab", "studentProgressTab"],
-    actions: ["schedule.view", "schedule.teacher", "schedule.done", "attendance.view", "attendance.edit", "lessonLog.view", "lessonLog.edit", "studentProgress.view", "backup.import"]
+    actions: ["schedule.view", "schedule.teacher", "schedule.done", "attendance.view", "attendance.edit", "lessonLog.view", "lessonLog.edit", "studentProgress.view"]
   },
   staff: {
     tabs: ["scheduleTab", "dashboardTab", "studentsTab", "classesTab", "attendanceTab", "lessonLogTab", "studentProgressTab", "tuitionSlipTab"],
-    actions: ["schedule.view", "schedule.teacher", "schedule.done", "students.view", "students.edit", "payments.edit", "classes.view", "classes.edit", "attendance.view", "attendance.note", "lessonLog.view", "lessonLog.edit", "studentProgress.view", "tuitionSlip.view", "tuitionSlip.edit", "backup.import"]
+    actions: ["schedule.view", "schedule.teacher", "schedule.done", "students.view", "students.edit", "payments.edit", "classes.view", "classes.edit", "attendance.view", "attendance.note", "lessonLog.view", "lessonLog.edit", "studentProgress.view", "tuitionSlip.view", "tuitionSlip.edit", "drive.load", "drive.save", "drive.settings"]
   }
 };
 
@@ -584,14 +584,16 @@ function applyRoleUi() {
   });
 
   setActionVisible("#saveData", can("all"));
-  setActionVisible("#importBackup", can("backup.import") || can("all"));
+  const canUseDriveSync = can("drive.load") || can("drive.save") || can("drive.settings") || can("all");
+
+  setActionVisible("#importBackup", false);
   setActionVisible("#exportBackup", can("all"));
-  setActionVisible("#loadDriveData", can("all"));
-  setActionVisible("#saveDriveData", can("all"));
-  setActionVisible("#saveDriveSettings", can("all"));
-  setActionVisible("#loadDriveDataDashboard", can("all"));
-  setActionVisible("#saveDriveDataDashboard", can("all"));
-  setActionVisible(".drive-sync-panel", can("all"));
+  setActionVisible("#loadDriveData", can("drive.load") || can("all"));
+  setActionVisible("#saveDriveData", can("drive.save") || can("all"));
+  setActionVisible("#saveDriveSettings", can("drive.settings") || can("all"));
+  setActionVisible("#loadDriveDataDashboard", can("drive.load") || can("all"));
+  setActionVisible("#saveDriveDataDashboard", can("drive.save") || can("all"));
+  setActionVisible(".drive-sync-panel", canUseDriveSync);
   setActionVisible("#addStudent", can("students.edit"));
   setActionVisible("#deleteStudentModal", can("all"));
   setActionVisible("#stopClassSchedule", can("classes.edit") || can("all"));
@@ -877,7 +879,7 @@ function getDriveSyncSettings() {
 }
 
 function saveDriveSyncSettings() {
-  if (!can("all")) {
+  if (!can("drive.settings") && !can("all")) {
     window.alert("Your account cannot update Drive sync settings.");
     return;
   }
@@ -894,7 +896,7 @@ function saveDriveSyncSettings() {
 }
 
 async function loadDataFromDrive() {
-  if (!can("all")) {
+  if (!can("drive.load") && !can("all")) {
     window.alert("Your account cannot load data from Drive.");
     return;
   }
@@ -937,8 +939,8 @@ async function loadDataFromDrive() {
 }
 
 async function saveDataToDrive() {
-  if (!can("all")) {
-    window.alert("Only Admin can save shared data to Drive.");
+  if (!can("drive.save") && !can("all")) {
+    window.alert("Your account cannot save shared data to Drive.");
     return;
   }
 
