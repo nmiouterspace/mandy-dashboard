@@ -29,7 +29,7 @@ const rolePermissions = {
   },
   staff: {
     tabs: ["scheduleTab", "dashboardTab", "studentsTab", "classesTab", "attendanceTab", "lessonLogTab", "studentProgressTab", "tuitionSlipTab"],
-    actions: ["schedule.view", "schedule.teacher", "schedule.done", "students.view", "students.edit", "payments.edit", "classes.view", "classes.edit", "attendance.view", "attendance.note", "lessonLog.view", "lessonLog.edit", "studentProgress.view", "tuitionSlip.view", "tuitionSlip.edit", "drive.load", "drive.save", "drive.settings"]
+    actions: ["schedule.view", "schedule.teacher", "schedule.done", "students.view", "students.edit", "payments.edit", "classes.view", "classes.edit", "attendance.view", "attendance.note", "lessonLog.view", "lessonLog.edit", "studentProgress.view", "tuitionSlip.view", "tuitionSlip.edit", "drive.load", "drive.settings"]
   }
 };
 
@@ -238,6 +238,8 @@ const nextWeek = document.querySelector("#nextWeek");
 const currentWeek = document.querySelector("#currentWeek");
 const mobileTabsToggle = document.querySelector("#mobileTabsToggle");
 const mobileAccountToggle = document.querySelector("#mobileAccountToggle");
+const mobileNav = document.createElement("nav");
+const mobileMoreSheet = document.createElement("div");
 let selectedWeekStart = getWeekStart(new Date());
 let mobileScheduleDayIndex = null;
 let editingAttendanceCell = null;
@@ -253,6 +255,16 @@ document.querySelectorAll(".tab-button").forEach(button => {
 
 mobileTabsToggle.addEventListener("click", () => toggleMobileMenu("tabs"));
 mobileAccountToggle.addEventListener("click", () => toggleMobileMenu("account"));
+mobileNav.className = "mobile-bottom-nav";
+mobileNav.setAttribute("aria-label", "Mobile navigation");
+mobileMoreSheet.className = "mobile-more-sheet";
+mobileMoreSheet.setAttribute("aria-hidden", "true");
+document.body.append(mobileNav, mobileMoreSheet);
+document.addEventListener("click", event => {
+  if (!document.body.classList.contains("mobile-more-open")) return;
+  if (mobileMoreSheet.contains(event.target) || mobileNav.contains(event.target)) return;
+  closeMobileMore();
+});
 
 document.querySelector("#addStudent").addEventListener("click", () => openStudentModal());
 document.querySelector("#clearFilters").addEventListener("click", clearStudentFilters);
@@ -616,6 +628,8 @@ function applyRoleUi() {
   } else {
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
   }
+
+  renderMobileNavigation();
 }
 
 function setActionVisible(selector, isVisible) {
@@ -5484,6 +5498,149 @@ function showTab(tabId) {
   document.querySelectorAll(".tab-panel").forEach(panel => {
     panel.classList.toggle("active", panel.id === tabId);
   });
+
+  updateMobileNavigationState(tabId);
+  closeMobileMore();
+}
+
+function getMobilePrimaryTabs() {
+  if (!currentUser) return [];
+
+  if (currentUser.role === "teacher") {
+    return ["scheduleTab", "attendanceTab", "lessonLogTab", "studentProgressTab"].filter(canOpenTab);
+  }
+
+  if (currentUser.role === "staff") {
+    return ["scheduleTab", "studentsTab", "classesTab", "tuitionSlipTab"].filter(canOpenTab);
+  }
+
+  return ["scheduleTab", "studentsTab", "classesTab", "financeTab"].filter(canOpenTab);
+}
+
+function getMobileTabLabel(tabId) {
+  const labels = {
+    scheduleTab: "Today",
+    dashboardTab: "Dashboard",
+    financeTab: "Finance",
+    studentsTab: "Students",
+    classesTab: "Classes",
+    attendanceTab: "Attendance",
+    lessonLogTab: "Logs",
+    studentProgressTab: "Progress",
+    tuitionSlipTab: "Tuition"
+  };
+  return labels[tabId] || tabId.replace("Tab", "");
+}
+
+function renderMobileNavigation() {
+  if (!mobileNav || !mobileMoreSheet) return;
+
+  if (!currentUser) {
+    mobileNav.innerHTML = "";
+    mobileMoreSheet.innerHTML = "";
+    closeMobileMore();
+    return;
+  }
+
+  const primaryTabs = getMobilePrimaryTabs();
+  const allTabs = [...document.querySelectorAll(".tab-button")]
+    .map(button => button.dataset.tab)
+    .filter(tabId => canOpenTab(tabId));
+  const moreTabs = allTabs.filter(tabId => !primaryTabs.includes(tabId));
+  const activeTab = document.querySelector(".tab-panel.active")?.id || getInitialTabForRole();
+
+  mobileNav.innerHTML = "";
+
+  primaryTabs.forEach(tabId => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = tabId === activeTab ? "mobile-nav-item active" : "mobile-nav-item";
+    button.dataset.tab = tabId;
+    button.textContent = getMobileTabLabel(tabId);
+    button.addEventListener("click", () => showTab(tabId));
+    mobileNav.append(button);
+  });
+
+  const moreButton = document.createElement("button");
+  moreButton.type = "button";
+  moreButton.className = moreTabs.includes(activeTab) ? "mobile-nav-item active" : "mobile-nav-item";
+  moreButton.textContent = "More";
+  moreButton.addEventListener("click", event => {
+    event.stopPropagation();
+    toggleMobileMore();
+  });
+  mobileNav.append(moreButton);
+
+  renderMobileMoreSheet(moreTabs);
+  updateMobileNavigationState(activeTab);
+}
+
+function renderMobileMoreSheet(moreTabs) {
+  const accountActions = [
+    { label: "Load from Drive", action: loadDataFromDrive, visible: can("drive.load") || can("all") },
+    { label: "Save to Drive", action: saveDataToDrive, visible: can("drive.save") || can("all") },
+    { label: "Save changes", action: () => saveData(), visible: can("all") },
+    { label: "Reset password", action: () => openPasswordResetModal(false), visible: Boolean(currentUser) },
+    { label: "Sign out", action: signOutUser, visible: Boolean(currentUser) }
+  ].filter(item => item.visible);
+
+  mobileMoreSheet.innerHTML = `
+    <div class="mobile-more-panel" role="dialog" aria-label="More navigation">
+      <div class="mobile-more-header">
+        <strong>More</strong>
+        <button class="icon-button" type="button" aria-label="Close">x</button>
+      </div>
+      <div class="mobile-more-section" data-section="tabs"></div>
+      <div class="mobile-more-section" data-section="actions"></div>
+    </div>
+  `;
+
+  mobileMoreSheet.querySelector(".icon-button").addEventListener("click", closeMobileMore);
+  const tabSection = mobileMoreSheet.querySelector('[data-section="tabs"]');
+  const actionSection = mobileMoreSheet.querySelector('[data-section="actions"]');
+
+  moreTabs.forEach(tabId => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "mobile-more-item";
+    button.dataset.tab = tabId;
+    button.textContent = getMobileTabLabel(tabId);
+    button.addEventListener("click", () => showTab(tabId));
+    tabSection.append(button);
+  });
+
+  accountActions.forEach(item => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "mobile-more-item";
+    button.textContent = item.label;
+    button.addEventListener("click", () => {
+      closeMobileMore();
+      item.action();
+    });
+    actionSection.append(button);
+  });
+}
+
+function updateMobileNavigationState(activeTab) {
+  if (!mobileNav) return;
+  mobileNav.querySelectorAll(".mobile-nav-item").forEach(button => {
+    button.classList.toggle("active", button.dataset.tab === activeTab);
+  });
+  mobileMoreSheet?.querySelectorAll(".mobile-more-item[data-tab]").forEach(button => {
+    button.classList.toggle("active", button.dataset.tab === activeTab);
+  });
+}
+
+function toggleMobileMore() {
+  const willOpen = !document.body.classList.contains("mobile-more-open");
+  document.body.classList.toggle("mobile-more-open", willOpen);
+  mobileMoreSheet.setAttribute("aria-hidden", willOpen ? "false" : "true");
+}
+
+function closeMobileMore() {
+  document.body.classList.remove("mobile-more-open");
+  mobileMoreSheet?.setAttribute("aria-hidden", "true");
 }
 
 function normalizePaymentType(paymentType) {
