@@ -10,7 +10,7 @@
   <title>Mandy English Student Management</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/mandy-logo.png">
-  <link rel="stylesheet" href="styles.css?v=20260919-drive-jsonp4">
+  <link rel="stylesheet" href="styles.css?v=20260919-mobile1">
 </head>
 <body>
   <header class="app-header">
@@ -362,6 +362,7 @@
           <textarea id="scheduleWeekNote" rows="2" placeholder="Holiday, class off reason, make-up note..."></textarea>
         </label>
       </div>
+      <div id="mobileScheduleList" class="mobile-schedule-list" aria-label="Mobile weekly class schedule"></div>
       <div id="weeklySchedule" class="weekly-schedule" aria-label="Weekly class schedule"></div>
     </section>
 
@@ -879,7 +880,7 @@
 
   <datalist id="classOptions"></datalist>
   <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
-  <script src="script.js?v=20260919-drive-jsonp4"></script>
+  <script src="script.js?v=20260919-mobile1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

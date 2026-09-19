@@ -142,6 +142,7 @@ const assistantMessages = document.querySelector("#assistantMessages");
 const assistantForm = document.querySelector("#assistantForm");
 const assistantInput = document.querySelector("#assistantInput");
 const toast = document.querySelector("#toast");
+const mobileScheduleList = document.querySelector("#mobileScheduleList");
 const exportBackup = document.querySelector("#exportBackup");
 const importBackup = document.querySelector("#importBackup");
 const importBackupFile = document.querySelector("#importBackupFile");
@@ -238,6 +239,7 @@ const currentWeek = document.querySelector("#currentWeek");
 const mobileTabsToggle = document.querySelector("#mobileTabsToggle");
 const mobileAccountToggle = document.querySelector("#mobileAccountToggle");
 let selectedWeekStart = getWeekStart(new Date());
+let mobileScheduleDayIndex = null;
 let editingAttendanceCell = null;
 let pendingLessonLogSession = null;
 let editingPaymentStudentIndex = null;
@@ -261,6 +263,7 @@ document.querySelector("#printSchedule").addEventListener("click", () => {
 document.querySelector("#exportScheduleCsv").addEventListener("click", exportScheduleCsv);
 scheduleWeekSelect.addEventListener("change", event => {
   selectedWeekStart = parseDateValue(event.target.value);
+  mobileScheduleDayIndex = null;
   renderWeeklySchedule();
   renderAttendanceBoard();
 });
@@ -269,6 +272,7 @@ previousWeek.addEventListener("click", () => shiftSelectedWeek(-1));
 nextWeek.addEventListener("click", () => shiftSelectedWeek(1));
 currentWeek.addEventListener("click", () => {
   selectedWeekStart = getWeekStart(new Date());
+  mobileScheduleDayIndex = null;
   renderWeekOptions();
   renderWeeklySchedule();
   renderAttendanceBoard();
@@ -4269,6 +4273,7 @@ function csvEscape(value) {
 
 function renderWeeklySchedule() {
   renderScheduleWeekNote();
+  renderMobileScheduleList();
 
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const shifts = [
@@ -4402,6 +4407,141 @@ function renderWeeklySchedule() {
   });
 }
 
+function renderMobileScheduleList() {
+  if (!mobileScheduleList) return;
+
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const shifts = [
+    { key: "morning", label: "Morning" },
+    { key: "midday", label: "Afternoon" },
+    { key: "evening", label: "Evening" }
+  ];
+  const weekDates = getSelectedWeekDates();
+  const todayValue = formatDateValue(new Date());
+  const todayIndex = weekDates.findIndex(date => formatDateValue(date) === todayValue);
+  const activeIndex = mobileScheduleDayIndex === null ? (todayIndex >= 0 ? todayIndex : 0) : mobileScheduleDayIndex;
+  const activeDay = days[activeIndex];
+  const activeDate = weekDates[activeIndex];
+  const classesForDay = getClassesForDay(activeDay).sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+  mobileScheduleDayIndex = activeIndex;
+  mobileScheduleList.innerHTML = "";
+
+  const dayPicker = document.createElement("div");
+  dayPicker.className = "mobile-day-picker";
+
+  days.forEach((day, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = index === activeIndex ? "mobile-day-chip active" : "mobile-day-chip";
+    button.innerHTML = `<strong>${day}</strong><span>${formatShortDate(weekDates[index])}</span>`;
+    button.addEventListener("click", () => {
+      mobileScheduleDayIndex = index;
+      renderWeeklySchedule();
+    });
+    dayPicker.append(button);
+  });
+
+  const heading = document.createElement("div");
+  heading.className = "mobile-schedule-heading";
+  heading.innerHTML = `<span>${formatShortDate(activeDate)}</span><strong>${classesForDay.length} classes</strong>`;
+
+  mobileScheduleList.append(dayPicker, heading);
+
+  shifts.forEach(shift => {
+    const shiftItems = classesForDay.filter(item => getShiftKey(item.startTime) === shift.key);
+    const section = document.createElement("section");
+    const title = document.createElement("h3");
+
+    section.className = "mobile-shift-section";
+    title.textContent = shift.label;
+    section.append(title);
+
+    if (!shiftItems.length) {
+      const empty = document.createElement("p");
+      empty.className = "mobile-empty-shift";
+      empty.textContent = "No classes";
+      section.append(empty);
+    }
+
+    shiftItems.forEach(item => {
+      section.append(createMobileScheduleCard(activeDay, item, activeDate));
+    });
+
+    mobileScheduleList.append(section);
+  });
+}
+
+function createMobileScheduleCard(day, item, date) {
+  const card = document.createElement("article");
+  const main = document.createElement("div");
+  const meta = document.createElement("div");
+  const className = document.createElement("strong");
+  const time = document.createElement("span");
+  const teacherInput = document.createElement("textarea");
+  const doneButton = document.createElement("button");
+  const teacherKey = getTeacherKey(day, item, date);
+  const legacyTeacherKey = getLegacyTeacherKey(day, item);
+  const sessionKey = getSessionKey({
+    date,
+    className: item.className,
+    startTime: item.startTime,
+    endTime: item.endTime
+  });
+  const isDone = Boolean(data.completedSessions[sessionKey]);
+  const teacherName = data.teachers[teacherKey] || getCurrentWeekLegacyTeacher(legacyTeacherKey);
+
+  card.className = "mobile-schedule-card";
+  if (isDone) card.classList.add("done-session");
+  if (isOffTeacher(teacherName)) card.classList.add("off-session");
+  main.className = "mobile-schedule-main";
+  meta.className = "mobile-schedule-meta";
+  className.textContent = item.className;
+  time.textContent = `${item.startTime}-${item.endTime}`;
+  teacherInput.className = "teacher-input mobile-teacher-input";
+  teacherInput.placeholder = "Teacher";
+  teacherInput.value = teacherName;
+  teacherInput.rows = 2;
+  teacherInput.spellcheck = false;
+  teacherInput.disabled = !can("schedule.teacher") && !can("all");
+  teacherInput.setAttribute("aria-label", `Teacher for ${item.className}`);
+  teacherInput.addEventListener("input", event => {
+    const session = {
+      date,
+      day,
+      className: item.className,
+      startTime: item.startTime,
+      endTime: item.endTime
+    };
+
+    updateTeacherName(teacherKey, event.target.value);
+    card.classList.toggle("off-session", isOffTeacher(event.target.value));
+    renderAttendanceBoard();
+    renderFinance();
+    if (isOffTeacher(event.target.value) && clearCompletedSession(session)) {
+      saveData(true);
+      renderStudents();
+      renderWeeklySchedule();
+      renderAttendanceBoard();
+      renderLessonLogs();
+      renderStudentProgress();
+      renderFinance();
+    }
+  });
+  doneButton.type = "button";
+  doneButton.className = isDone ? "done-button done" : "done-button";
+  doneButton.textContent = "Done";
+  doneButton.classList.toggle("role-hidden", !can("schedule.done") && !can("all"));
+  doneButton.addEventListener("click", () => {
+    toggleSessionDone(day, item, date);
+  });
+
+  main.append(className, time);
+  meta.append(teacherInput, doneButton);
+  card.append(main, meta);
+  return card;
+}
+
 function getSelectedWeekKey() {
   return formatDateValue(selectedWeekStart);
 }
@@ -4458,6 +4598,7 @@ function renderWeekOptions() {
 
 function shiftSelectedWeek(direction) {
   selectedWeekStart = addDays(selectedWeekStart, direction * 7);
+  mobileScheduleDayIndex = null;
   renderWeekOptions();
   renderWeeklySchedule();
   renderAttendanceBoard();

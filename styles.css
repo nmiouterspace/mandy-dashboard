@@ -830,6 +830,10 @@ button {
   overflow-x: auto;
 }
 
+.mobile-schedule-list {
+  display: none;
+}
+
 .schedule-matrix {
   display: grid;
   grid-template-columns: 110px repeat(7, minmax(135px, 1fr));
@@ -2394,10 +2398,153 @@ textarea:focus {
   }
 
   .weekly-schedule {
-    overflow-x: auto;
-    margin-right: -12px;
-    padding-bottom: 8px;
-    -webkit-overflow-scrolling: touch;
+    display: none;
+  }
+
+  .mobile-schedule-list {
+    display: block;
+  }
+
+  .mobile-day-picker {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+
+  .mobile-day-chip {
+    min-height: 48px;
+    padding: 6px 2px;
+    border: 1px solid #c9d8d2;
+    border-radius: 9px;
+    background: #ffffff;
+    color: var(--ink);
+    font: inherit;
+    text-align: center;
+  }
+
+  .mobile-day-chip strong,
+  .mobile-day-chip span {
+    display: block;
+  }
+
+  .mobile-day-chip strong {
+    font-size: 12px;
+    line-height: 1.1;
+  }
+
+  .mobile-day-chip span {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .mobile-day-chip.active {
+    border-color: var(--green);
+    background: #e8f5ef;
+    color: var(--green);
+  }
+
+  .mobile-schedule-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 2px 0 12px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .mobile-schedule-heading strong {
+    color: var(--green);
+  }
+
+  .mobile-shift-section {
+    margin-top: 12px;
+  }
+
+  .mobile-shift-section h3 {
+    margin: 0 0 7px;
+    color: var(--green);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .mobile-empty-shift {
+    margin: 0;
+    padding: 12px;
+    border: 1px dashed #cbd8d2;
+    border-radius: 8px;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .mobile-schedule-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(108px, 38%);
+    overflow: hidden;
+    margin-bottom: 8px;
+    border: 1px solid #cbded6;
+    border-left: 5px solid var(--green);
+    border-radius: 8px;
+    background: #f5fbf8;
+  }
+
+  .mobile-schedule-card.done-session {
+    border-color: #9bd4ad;
+    border-left-color: #1f9d55;
+    background: #eefaf1;
+  }
+
+  .mobile-schedule-card.off-session {
+    border-color: #e6b8b1;
+    border-left-color: #b42318;
+    background: #fff5f3;
+  }
+
+  .mobile-schedule-main {
+    min-width: 0;
+    padding: 10px;
+  }
+
+  .mobile-schedule-main strong {
+    display: block;
+    overflow-wrap: anywhere;
+    font-size: 16px;
+    line-height: 1.15;
+  }
+
+  .mobile-schedule-main span {
+    display: block;
+    margin-top: 6px;
+    color: #0f4f7a;
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  .mobile-schedule-meta {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    border-left: 1px solid #cbded6;
+    background: rgba(255, 255, 255, 0.45);
+  }
+
+  .mobile-teacher-input {
+    min-height: 54px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 900;
+    text-align: center;
+  }
+
+  .mobile-schedule-meta .done-button {
+    min-height: 34px;
+    border-top: 1px solid #cbded6;
+    border-radius: 0;
+    font-size: 12px;
   }
 
   .table-wrap::before {
@@ -2512,7 +2659,83 @@ textarea:focus {
   }
 
   .student-table {
-    min-width: 1180px;
+    display: block;
+    min-width: 0;
+  }
+
+  .student-table thead {
+    display: none;
+  }
+
+  .student-table tbody,
+  .student-table tr,
+  .student-table td {
+    display: block;
+  }
+
+  .student-table tr {
+    margin-bottom: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 8px 20px rgba(30, 42, 39, 0.06);
+  }
+
+  .student-table td {
+    width: auto !important;
+    min-height: auto;
+    padding: 9px 12px;
+    border-bottom: 1px solid #edf1ef;
+    font-size: 14px;
+  }
+
+  .student-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .student-table td::before {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .student-table td:nth-child(1)::before { content: "No."; }
+  .student-table td:nth-child(2)::before { content: "Student"; }
+  .student-table td:nth-child(3)::before { content: "Class"; }
+  .student-table td:nth-child(4)::before { content: "Contact"; }
+  .student-table td:nth-child(5)::before { content: "Payment"; }
+  .student-table td:nth-child(6)::before { content: "Done"; }
+  .student-table td:nth-child(7)::before { content: "Reminder"; }
+  .student-table td:nth-child(8)::before { content: "Last paid"; }
+  .student-table td:nth-child(9)::before { content: "Next due"; }
+  .student-table td:nth-child(10)::before { content: "Status"; }
+  .student-table td:nth-child(11)::before { content: "Action"; }
+
+  .student-table .table-group-row {
+    margin: 14px 0 8px;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .student-table .table-group-row td {
+    border: 0;
+    border-radius: 8px;
+    background: #f0f7f3;
+    color: var(--green);
+  }
+
+  .student-table .table-group-row td::before {
+    display: none;
+  }
+
+  .student-table .student-action-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   .attendance-card {
