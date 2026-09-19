@@ -242,6 +242,7 @@ const mobileTabsToggle = document.querySelector("#mobileTabsToggle");
 const mobileAccountToggle = document.querySelector("#mobileAccountToggle");
 const mobileNav = document.createElement("nav");
 const mobileMoreSheet = document.createElement("div");
+const mobileHomePanel = document.createElement("section");
 let selectedWeekStart = getWeekStart(new Date());
 let mobileScheduleDayIndex = null;
 let editingAttendanceCell = null;
@@ -264,6 +265,10 @@ mobileNav.className = "mobile-bottom-nav";
 mobileNav.setAttribute("aria-label", "Mobile navigation");
 mobileMoreSheet.className = "mobile-more-sheet";
 mobileMoreSheet.setAttribute("aria-hidden", "true");
+mobileHomePanel.id = "mobileHomeTab";
+mobileHomePanel.className = "mobile-home-panel tab-panel";
+mobileHomePanel.setAttribute("aria-label", "Mobile home setup board");
+document.querySelector("main")?.append(mobileHomePanel);
 document.body.append(mobileNav, mobileMoreSheet);
 document.addEventListener("click", event => {
   if (!document.body.classList.contains("mobile-more-open")) return;
@@ -503,7 +508,7 @@ async function signInUser() {
   loginPassword.value = "";
   loginError.textContent = "";
   render();
-  showTab(getInitialTabForRole());
+  showTab(window.matchMedia?.("(max-width: 760px)").matches ? "mobileHomeTab" : getInitialTabForRole());
   showToast(`Signed in as ${account.username}`);
 
   if (account.mustResetPassword || account.password === "123") {
@@ -629,7 +634,13 @@ function applyRoleUi() {
 
   if (isSignedIn) {
     const activePanel = document.querySelector(".tab-panel.active");
-    if (!activePanel || !canOpenTab(activePanel.id)) showTab(getInitialTabForRole());
+    const isMobileHome = activePanel?.id === "mobileHomeTab";
+    const shouldUseMobileHome = window.matchMedia?.("(max-width: 760px)").matches;
+    if (shouldUseMobileHome && (!activePanel || !activePanel.classList.contains("active"))) {
+      showTab("mobileHomeTab");
+    } else if (!activePanel || (!isMobileHome && !canOpenTab(activePanel.id))) {
+      showTab(shouldUseMobileHome ? "mobileHomeTab" : getInitialTabForRole());
+    }
   } else {
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
   }
@@ -4945,7 +4956,7 @@ function showToast(message = "Saved") {
 
 function getSavedTheme() {
   const savedTheme = localStorage.getItem(themePreferenceKey);
-  return savedTheme === "dark" ? "dark" : "light";
+  return savedTheme === "light" ? "light" : "dark";
 }
 
 function applyTheme(theme) {
@@ -5511,6 +5522,17 @@ function windows1252Byte(char) {
 }
 
 function showTab(tabId) {
+  if (tabId === "mobileHomeTab") {
+    document.querySelectorAll(".tab-button").forEach(button => button.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(panel => {
+      panel.classList.toggle("active", panel.id === "mobileHomeTab");
+    });
+    renderMobileHomePanel();
+    updateMobileNavigationState(tabId);
+    closeMobileMore();
+    return;
+  }
+
   if (!canOpenTab(tabId)) {
     if (!currentUser) {
       applyRoleUi();
@@ -5535,19 +5557,20 @@ function getMobilePrimaryTabs() {
   if (!currentUser) return [];
 
   if (currentUser.role === "teacher") {
-    return ["scheduleTab", "attendanceTab", "lessonLogTab", "studentProgressTab"].filter(canOpenTab);
+    return ["mobileHomeTab", "scheduleTab", "attendanceTab"];
   }
 
   if (currentUser.role === "staff") {
-    return ["scheduleTab", "studentsTab", "classesTab", "tuitionSlipTab"].filter(canOpenTab);
+    return ["mobileHomeTab", "scheduleTab", "studentsTab"];
   }
 
-  return ["scheduleTab", "studentsTab", "classesTab", "financeTab"].filter(canOpenTab);
+  return ["mobileHomeTab", "scheduleTab", "studentsTab"];
 }
 
 function getMobileTabLabel(tabId) {
   const labels = {
     scheduleTab: "Today",
+    mobileHomeTab: "Home",
     dashboardTab: "Dashboard",
     financeTab: "Finance",
     studentsTab: "Students",
@@ -5575,7 +5598,7 @@ function renderMobileNavigation() {
     .map(button => button.dataset.tab)
     .filter(tabId => canOpenTab(tabId));
   const moreTabs = allTabs.filter(tabId => !primaryTabs.includes(tabId));
-  const activeTab = document.querySelector(".tab-panel.active")?.id || getInitialTabForRole();
+  const activeTab = document.querySelector(".tab-panel.active")?.id || "mobileHomeTab";
 
   mobileNav.innerHTML = "";
 
@@ -5600,6 +5623,7 @@ function renderMobileNavigation() {
   mobileNav.append(moreButton);
 
   renderMobileMoreSheet(moreTabs);
+  renderMobileHomePanel();
   updateMobileNavigationState(activeTab);
 }
 
@@ -5649,6 +5673,125 @@ function renderMobileMoreSheet(moreTabs) {
     });
     actionSection.append(button);
   });
+}
+
+function renderMobileHomePanel() {
+  if (!mobileHomePanel || !currentUser) return;
+
+  const todayDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()];
+  const todayClasses = getClassesForDay(todayDay);
+  const completedToday = todayClasses.filter(item => {
+    const sessionKey = getSessionKey({
+      date: new Date(),
+      className: item.className,
+      startTime: item.startTime,
+      endTime: item.endTime
+    });
+    return data.completedSessions[sessionKey];
+  }).length;
+  const paymentFollowUps = data.students.filter(student => {
+    if (student.status !== "Active") return false;
+    return matchesTuitionAlertFilter(student, "priority");
+  }).length;
+  const activeClasses = data.classes.filter(classItem => !isStoppedClass(classItem, selectedWeekStart)).length;
+  const activeStudents = data.students.filter(student => student.status === "Active").length;
+
+  const cards = [
+    {
+      title: "Today Schedule",
+      body: `${todayClasses.length} classes · ${Math.max(todayClasses.length - completedToday, 0)} not done`,
+      action: "Open",
+      tab: "scheduleTab",
+      visible: canOpenTab("scheduleTab")
+    },
+    {
+      title: "Student Care",
+      body: `${paymentFollowUps} payment follow-ups · ${activeStudents} active`,
+      action: "Follow up",
+      tab: "studentsTab",
+      visible: canOpenTab("studentsTab")
+    },
+    {
+      title: "Attendance",
+      body: "Cycles, notes, exports",
+      action: "Check",
+      tab: "attendanceTab",
+      visible: canOpenTab("attendanceTab")
+    },
+    {
+      title: "Class Setup",
+      body: `${activeClasses} active classes · schedules`,
+      action: "Manage",
+      tab: "classesTab",
+      visible: canOpenTab("classesTab")
+    },
+    {
+      title: "Finance",
+      body: "Revenue and net profit",
+      action: "Admin",
+      tab: "financeTab",
+      visible: canOpenTab("financeTab")
+    },
+    {
+      title: "Lesson Logs",
+      body: "Teacher notes and homework",
+      action: "Review",
+      tab: "lessonLogTab",
+      visible: canOpenTab("lessonLogTab")
+    },
+    {
+      title: "Office & Data",
+      body: "Load from Drive · Tuition Slip · Account",
+      action: "Open tools",
+      tab: "tuitionSlipTab",
+      visible: true,
+      wide: true
+    }
+  ].filter(card => card.visible);
+
+  mobileHomePanel.innerHTML = `
+    <div class="mobile-home-header">
+      <div>
+        <h2>Mandy English</h2>
+        <p>Good ${getDayPeriod()}, ${escapeHtml(currentUser.username)}</p>
+      </div>
+      <button class="mobile-home-avatar" type="button" aria-label="Open account tools">M</button>
+    </div>
+    <div class="mobile-home-hero">
+      <span>Today · ${escapeHtml(roleLabels[currentUser.role] || currentUser.role)} view</span>
+      <strong>What do you want to manage?</strong>
+    </div>
+    <div class="mobile-home-grid"></div>
+  `;
+
+  const grid = mobileHomePanel.querySelector(".mobile-home-grid");
+  cards.forEach(card => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = card.wide ? "mobile-home-card wide" : "mobile-home-card";
+    button.innerHTML = `
+      <strong>${escapeHtml(card.title)}</strong>
+      <span>${escapeHtml(card.body)}</span>
+      <em>${escapeHtml(card.action)}</em>
+    `;
+    button.addEventListener("click", () => {
+      if (card.title === "Office & Data" && !canOpenTab(card.tab)) {
+        toggleMobileMore();
+        return;
+      }
+      showTab(card.tab);
+    });
+    grid.append(button);
+  });
+
+  mobileHomePanel.querySelector(".mobile-home-avatar")?.addEventListener("click", toggleMobileMore);
+}
+
+function getDayPeriod() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "morning";
+  if (hour < 18) return "afternoon";
+  return "evening";
 }
 
 function updateMobileNavigationState(activeTab) {
@@ -6579,3 +6722,6 @@ function updateMobileMenuButtons() {
 
 loadDriveSyncSettings();
 render();
+if (currentUser && window.matchMedia?.("(max-width: 760px)").matches) {
+  showTab("mobileHomeTab");
+}

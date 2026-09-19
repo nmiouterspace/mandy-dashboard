@@ -10,13 +10,18 @@
   <title>Mandy English Student Management</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/mandy-logo.png">
-  <link rel="stylesheet" href="styles.css?v=20260919-theme1">
+  <link rel="stylesheet" href="styles.css?v=20260920-artkey2">
 </head>
 <body>
   <header class="app-header">
-    <div>
-      <p class="eyebrow">Mandy English</p>
-      <h1>Student Management</h1>
+    <div class="app-brand">
+      <span class="app-brand-mark">
+        <img src="assets/mandy-logo.png" alt="Mandy English logo">
+      </span>
+      <div>
+        <p class="eyebrow">Student Management</p>
+        <h1>Mandy English</h1>
+      </div>
     </div>
     <div class="header-actions">
       <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch color theme">Light</button>
@@ -39,15 +44,17 @@
       <button id="mobileAccountToggle" class="ghost-button mobile-command-button" type="button" aria-expanded="false">Account</button>
     </div>
     <nav class="tabs" aria-label="Main sections">
+      <span class="nav-section-label">Daily Work</span>
       <button class="tab-button active" data-tab="scheduleTab" type="button">Schedule</button>
-      <button class="tab-button" data-tab="dashboardTab" type="button">Dashboard</button>
-      <button class="tab-button" data-tab="financeTab" type="button">Finance</button>
-      <button class="tab-button" data-tab="studentsTab" type="button">Student List</button>
-      <button class="tab-button" data-tab="classesTab" type="button">Class List</button>
       <button class="tab-button" data-tab="attendanceTab" type="button">Attendance</button>
       <button class="tab-button" data-tab="lessonLogTab" type="button">Lesson Log</button>
-      <button class="tab-button" data-tab="studentProgressTab" type="button">Student Progress</button>
+      <span class="nav-section-label">Office</span>
+      <button class="tab-button" data-tab="studentsTab" type="button">Student List</button>
+      <button class="tab-button" data-tab="classesTab" type="button">Class List</button>
       <button class="tab-button" data-tab="tuitionSlipTab" type="button">Tuition Slip</button>
+      <button class="tab-button" data-tab="studentProgressTab" type="button">Student Progress</button>
+      <button class="tab-button" data-tab="financeTab" type="button">Finance</button>
+      <button class="tab-button" data-tab="dashboardTab" type="button">Dashboard</button>
     </nav>
 
     <section id="dashboardTab" class="tab-panel">
@@ -881,7 +888,7 @@
 
   <datalist id="classOptions"></datalist>
   <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
-  <script src="script.js?v=20260919-theme1"></script>
+  <script src="script.js?v=20260920-artkey2"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
