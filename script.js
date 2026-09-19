@@ -5,6 +5,7 @@ const driveSyncSettingsKey = "mandyEnglishDriveSyncSettings";
 const userAccountsKey = "mandyEnglishUserAccounts";
 const activeUserKey = "mandyEnglishActiveUser";
 const themePreferenceKey = "mandyEnglishThemePreference";
+const sidebarCollapsedKey = "mandyEnglishSidebarCollapsed";
 const preClassRenameBackupKey = "mandyEnglishStudentSystemBackupBeforeClassRename20260722";
 
 const defaultUserAccounts = [
@@ -134,6 +135,7 @@ const financeDailyCost = document.querySelector("#financeDailyCost");
 const financeNetProfit = document.querySelector("#financeNetProfit");
 const financeCompletedLessons = document.querySelector("#financeCompletedLessons");
 const financeProjectedRevenue = document.querySelector("#financeProjectedRevenue");
+const navFinanceNetProfit = document.querySelector("#navFinanceNetProfit");
 const financeDetailTitle = document.querySelector("#financeDetailTitle");
 const financeProjectedTitle = document.querySelector("#financeProjectedTitle");
 const financeClassFeeRows = document.querySelector("#financeClassFeeRows");
@@ -240,6 +242,8 @@ const nextWeek = document.querySelector("#nextWeek");
 const currentWeek = document.querySelector("#currentWeek");
 const mobileTabsToggle = document.querySelector("#mobileTabsToggle");
 const mobileAccountToggle = document.querySelector("#mobileAccountToggle");
+const sidebarToggle = document.querySelector("#sidebarToggle");
+const accountDropdown = document.querySelector("#accountDropdown");
 const mobileNav = document.createElement("nav");
 const mobileMoreSheet = document.createElement("div");
 const mobileHomePanel = document.createElement("section");
@@ -250,6 +254,7 @@ let pendingLessonLogSession = null;
 let editingPaymentStudentIndex = null;
 
 applyTheme(getSavedTheme());
+applySidebarState(getSavedSidebarState());
 
 document.querySelectorAll(".tab-button").forEach(button => {
   button.addEventListener("click", () => {
@@ -260,7 +265,15 @@ document.querySelectorAll(".tab-button").forEach(button => {
 
 mobileTabsToggle.addEventListener("click", () => toggleMobileMenu("tabs"));
 mobileAccountToggle.addEventListener("click", () => toggleMobileMenu("account"));
+sidebarToggle.addEventListener("click", toggleSidebar);
 themeToggle.addEventListener("click", toggleTheme);
+currentUserPill.addEventListener("click", event => {
+  event.stopPropagation();
+  toggleAccountMenu();
+});
+accountDropdown.addEventListener("click", event => {
+  if (event.target.closest("button")) closeAccountMenu();
+});
 mobileNav.className = "mobile-bottom-nav";
 mobileNav.setAttribute("aria-label", "Mobile navigation");
 mobileMoreSheet.className = "mobile-more-sheet";
@@ -271,6 +284,10 @@ mobileHomePanel.setAttribute("aria-label", "Mobile home setup board");
 document.querySelector("main")?.append(mobileHomePanel);
 document.body.append(mobileNav, mobileMoreSheet);
 document.addEventListener("click", event => {
+  if (document.body.classList.contains("account-menu-open") && !event.target.closest(".account-menu")) {
+    closeAccountMenu();
+  }
+
   if (!document.body.classList.contains("mobile-more-open")) return;
   if (mobileMoreSheet.contains(event.target) || mobileNav.contains(event.target)) return;
   closeMobileMore();
@@ -508,7 +525,7 @@ async function signInUser() {
   loginPassword.value = "";
   loginError.textContent = "";
   render();
-  showTab(window.matchMedia?.("(max-width: 760px)").matches ? "mobileHomeTab" : getInitialTabForRole());
+  showTab(window.matchMedia?.("(max-width: 760px)").matches ? getInitialMobileTabForRole() : getInitialTabForRole());
   showToast(`Signed in as ${account.username}`);
 
   if (account.mustResetPassword || account.password === "123") {
@@ -533,6 +550,7 @@ async function hashPassword(password) {
 function signOutUser() {
   currentUser = null;
   localStorage.removeItem(activeUserKey);
+  closeAccountMenu();
   applyRoleUi();
   closeAllModals();
 }
@@ -600,6 +618,10 @@ function getInitialTabForRole() {
   return rolePermissions[currentUser?.role]?.tabs?.[0] || "scheduleTab";
 }
 
+function getInitialMobileTabForRole() {
+  return canOpenTab("scheduleTab") ? "scheduleTab" : getInitialTabForRole();
+}
+
 function applyRoleUi() {
   const isSignedIn = Boolean(currentUser);
   authOverlay.classList.toggle("open", !isSignedIn);
@@ -635,11 +657,11 @@ function applyRoleUi() {
   if (isSignedIn) {
     const activePanel = document.querySelector(".tab-panel.active");
     const isMobileHome = activePanel?.id === "mobileHomeTab";
-    const shouldUseMobileHome = window.matchMedia?.("(max-width: 760px)").matches;
-    if (shouldUseMobileHome && (!activePanel || !activePanel.classList.contains("active"))) {
-      showTab("mobileHomeTab");
+    const isMobile = window.matchMedia?.("(max-width: 760px)").matches;
+    if (isMobile && (!activePanel || !activePanel.classList.contains("active"))) {
+      showTab(getInitialMobileTabForRole());
     } else if (!activePanel || (!isMobileHome && !canOpenTab(activePanel.id))) {
-      showTab(shouldUseMobileHome ? "mobileHomeTab" : getInitialTabForRole());
+      showTab(isMobile ? getInitialMobileTabForRole() : getInitialTabForRole());
     }
   } else {
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
@@ -3738,6 +3760,21 @@ function renderFinance() {
   renderFinanceClassFees();
   renderFinanceProjection();
   renderFinanceRevenue();
+  renderNavFinanceNetProfit();
+}
+
+function renderNavFinanceNetProfit() {
+  if (!navFinanceNetProfit) return;
+  const now = new Date();
+  const start = formatDateValue(new Date(now.getFullYear(), now.getMonth(), 1));
+  const end = formatDateValue(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  const rows = getFinanceRevenueRows({ start, end });
+  const totals = rows.reduce((summary, row) => {
+    summary.revenue += row.revenue;
+    summary.cost += row.cost;
+    return summary;
+  }, { revenue: 0, cost: 0 });
+  navFinanceNetProfit.textContent = formatCurrency(totals.revenue - totals.cost);
 }
 
 function renderFinanceClassFees() {
@@ -4955,8 +4992,7 @@ function showToast(message = "Saved") {
 }
 
 function getSavedTheme() {
-  const savedTheme = localStorage.getItem(themePreferenceKey);
-  return savedTheme === "light" ? "light" : "dark";
+  return "light";
 }
 
 function applyTheme(theme) {
@@ -4972,9 +5008,37 @@ function applyTheme(theme) {
 }
 
 function toggleTheme() {
-  const nextTheme = document.body.dataset.theme === "dark" ? "light" : "dark";
-  applyTheme(nextTheme);
+  applyTheme("light");
   renderMobileNavigation();
+}
+
+function getSavedSidebarState() {
+  return localStorage.getItem(sidebarCollapsedKey) === "true";
+}
+
+function applySidebarState(isCollapsed) {
+  document.body.classList.toggle("sidebar-collapsed", isCollapsed);
+  localStorage.setItem(sidebarCollapsedKey, isCollapsed ? "true" : "false");
+
+  if (sidebarToggle) {
+    sidebarToggle.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+    sidebarToggle.setAttribute("aria-label", isCollapsed ? "Expand navigation" : "Collapse navigation");
+  }
+}
+
+function toggleSidebar() {
+  applySidebarState(!document.body.classList.contains("sidebar-collapsed"));
+}
+
+function toggleAccountMenu() {
+  const willOpen = !document.body.classList.contains("account-menu-open");
+  document.body.classList.toggle("account-menu-open", willOpen);
+  currentUserPill?.setAttribute("aria-expanded", willOpen ? "true" : "false");
+}
+
+function closeAccountMenu() {
+  document.body.classList.remove("account-menu-open");
+  currentUserPill?.setAttribute("aria-expanded", "false");
 }
 
 function openStudentModal(index = null) {
@@ -5632,7 +5696,6 @@ function renderMobileMoreSheet(moreTabs) {
     { label: "Load from Drive", action: loadDataFromDrive, visible: can("drive.load") || can("all") },
     { label: "Save to Drive", action: saveDataToDrive, visible: can("drive.save") || can("all") },
     { label: "Save changes", action: () => saveData(), visible: can("all") },
-    { label: `Theme: ${document.body.dataset.theme === "dark" ? "Dark" : "Light"}`, action: toggleTheme, visible: Boolean(currentUser) },
     { label: "Reset password", action: () => openPasswordResetModal(false), visible: Boolean(currentUser) },
     { label: "Sign out", action: signOutUser, visible: Boolean(currentUser) }
   ].filter(item => item.visible);
@@ -6723,5 +6786,5 @@ function updateMobileMenuButtons() {
 loadDriveSyncSettings();
 render();
 if (currentUser && window.matchMedia?.("(max-width: 760px)").matches) {
-  showTab("mobileHomeTab");
+  showTab(getInitialMobileTabForRole());
 }

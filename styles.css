@@ -38,12 +38,18 @@ body[data-theme="dark"] {
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
   background: var(--bg);
   color: var(--ink);
-  font-family: "Arial Unicode MS", "Noto Sans", "Tahoma", "Verdana", "Segoe UI", Arial, sans-serif;
+  font-family: Inter, "Segoe UI", "Helvetica Neue", "Noto Sans", Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
 }
 
 .app-header {
@@ -63,10 +69,14 @@ body {
   min-width: 0;
 }
 
+.app-brand > div {
+  min-width: 0;
+}
+
 .app-brand-mark {
   display: none;
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
   overflow: hidden;
   place-items: center;
   border-radius: 18px;
@@ -97,7 +107,8 @@ body[data-theme="dark"] .app-header .current-user-pill span {
 }
 
 .app-header h1 {
-  font-size: clamp(28px, 4vw, 44px);
+  font-size: clamp(28px, 3.4vw, 42px);
+  font-weight: 600;
   line-height: 1.05;
 }
 
@@ -119,16 +130,24 @@ body[data-theme="dark"] .app-header .current-user-pill span {
 }
 
 .current-user-pill {
-  display: grid;
-  gap: 2px;
-  min-width: 120px;
-  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--green-soft);
   color: var(--ink);
-  font-size: 12px;
-  font-weight: 700;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.current-user-pill::after {
+  content: "⌄";
+  color: var(--muted);
+  font-size: 14px;
 }
 
 .current-user-pill span {
@@ -137,7 +156,11 @@ body[data-theme="dark"] .app-header .current-user-pill span {
   text-transform: uppercase;
 }
 
-.theme-toggle {
+.theme-toggle,
+.sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 42px;
   padding: 0 12px;
   border: 1px solid var(--line);
@@ -146,6 +169,70 @@ body[data-theme="dark"] .app-header .current-user-pill span {
   color: var(--green);
   font-size: 12px;
   font-weight: 800;
+}
+
+.sidebar-toggle {
+  width: 42px;
+  padding: 0;
+  font-size: 18px;
+}
+
+.theme-toggle {
+  display: none !important;
+}
+
+.account-menu {
+  position: relative;
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 55;
+  display: none;
+  width: 220px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 18px 42px rgba(23, 40, 35, 0.18);
+}
+
+body.account-menu-open .account-dropdown {
+  display: grid;
+  gap: 6px;
+}
+
+.account-dropdown .ghost-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.account-dropdown .primary-button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 40px;
+  border-radius: 9px;
+  font-size: 13px;
+  text-align: left;
+}
+
+.account-dropdown .ghost-button:hover {
+  background: var(--green-soft);
+  color: var(--green);
 }
 
 .hidden-file-input {
@@ -157,7 +244,7 @@ body[data-theme="dark"] .app-header .current-user-pill span {
 }
 
 .developer-only-action {
-  display: none;
+  display: none !important;
 }
 
 .mobile-command-bar {
@@ -188,6 +275,9 @@ main {
 }
 
 .tab-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 130px;
   padding: 0 16px;
   border: 1px solid var(--line);
@@ -207,12 +297,12 @@ main {
   }
 
   .app-header {
-    width: min(1460px, calc(100% - clamp(28px, 6vw, 80px)));
-    margin: 24px auto 0;
-    padding: 26px 32px;
+    width: min(1500px, calc(100% - clamp(24px, 5vw, 76px)));
+    margin: 18px auto 0;
+    padding: 18px 28px;
     border: 1px solid var(--line);
     border-bottom: 0;
-    border-radius: 24px 24px 0 0;
+    border-radius: 20px 20px 0 0;
   }
 
   body[data-theme="dark"] .app-header {
@@ -224,15 +314,17 @@ main {
   }
 
   .app-brand {
-    flex: 0 0 370px;
+    flex: 0 0 auto;
+    min-width: 360px;
   }
 
   .app-header h1 {
-    font-size: clamp(30px, 2.4vw, 40px);
+    font-size: clamp(28px, 2.1vw, 36px);
     white-space: nowrap;
   }
 
   body[data-theme="dark"] .theme-toggle,
+  body[data-theme="dark"] .sidebar-toggle,
   body[data-theme="dark"] .current-user-pill,
   body[data-theme="dark"] .header-actions .ghost-button {
     border-color: rgba(255, 255, 255, 0.34);
@@ -248,34 +340,60 @@ main {
 
   main {
     display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-columns: 248px minmax(0, 1fr);
     gap: 0;
-    width: min(1460px, 100%);
-    padding: 0 clamp(14px, 3vw, 40px) 44px;
+    width: min(1500px, calc(100% - clamp(24px, 5vw, 76px)));
+    padding: 0 0 44px;
+    transition: grid-template-columns 180ms ease;
+  }
+
+  body.sidebar-collapsed main {
+    grid-template-columns: 82px minmax(0, 1fr);
   }
 
   .tabs {
     align-self: stretch;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     margin: 0;
-    padding: 28px 18px;
+    padding: 26px 14px;
     overflow: visible;
-    border: 1px solid var(--line);
+    border: 1px solid #152b35;
     border-top: 0;
     border-radius: 0 0 0 18px;
-    background: light-dark(#f3faf6, #10221d);
+    background: #14232c;
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .nav-collapse-button {
+    flex: 0 0 auto;
+    margin-left: 2px;
+    border-color: rgba(255, 255, 255, 0.16);
+    background: #14232c;
+    color: #eaf7f4;
+  }
+
+  body.sidebar-collapsed .nav-collapse-button {
+    align-self: center;
+  }
+
+  body.sidebar-collapsed .tabs {
+    padding-inline: 10px;
   }
 
   .nav-section-label {
     display: block;
-    margin: 20px 14px 8px;
-    color: var(--muted);
-    font-size: 12px;
+    margin: 18px 12px 8px;
+    color: rgba(255, 255, 255, 0.48);
+    font-size: 11px;
     font-weight: 900;
     letter-spacing: 0.13em;
     text-transform: uppercase;
+  }
+
+  body.sidebar-collapsed .nav-section-label {
+    display: none;
   }
 
   .nav-section-label:first-child {
@@ -283,21 +401,84 @@ main {
   }
 
   .tab-button {
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 13px;
     width: 100%;
     min-width: 0;
-    min-height: 48px;
-    padding: 0 15px;
+    min-height: 46px;
+    padding: 0 14px;
     border: 0;
-    border-radius: 10px;
+    border-left: 3px solid transparent;
+    border-radius: 0 10px 10px 0;
     background: transparent;
-    color: var(--ink);
-    font-size: 17px;
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 16px;
+    font-weight: 550;
     text-align: left;
   }
 
+  .nav-sub-value {
+    display: block;
+    margin-top: 3px;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .tab-button:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+  }
+
+  .nav-icon {
+    display: inline-grid;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    place-items: center;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.68);
+    line-height: 1;
+  }
+
+  .nav-icon svg {
+    width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.9;
+  }
+
+  .tab-button.active .nav-icon,
+  .tab-button:hover .nav-icon {
+    color: #64e3d5;
+  }
+
+  body.sidebar-collapsed .tab-button {
+    justify-content: center;
+    width: 58px;
+    padding: 0;
+    border-left: 0;
+    border-radius: 12px;
+    font-size: 0;
+  }
+
+  body.sidebar-collapsed .nav-text {
+    display: none;
+  }
+
+  body.sidebar-collapsed .nav-icon {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+
   .tab-button.active {
-    background: light-dark(var(--green), #075f52);
+    border-left-color: #22c8d5;
+    background: rgba(34, 200, 213, 0.13);
     color: #ffffff;
   }
 
@@ -314,7 +495,7 @@ main {
   .panel.tab-panel,
   #dashboardTab.tab-panel {
     margin: 0;
-    padding: 28px 30px;
+    padding: 26px 28px;
     border: 1px solid var(--line);
     border-top: 0;
     border-left: 0;
@@ -818,19 +999,41 @@ button {
   border: 0;
   border-radius: 6px;
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 650;
+}
+
+#studentsTab .filters {
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) minmax(220px, 0.9fr) minmax(150px, 0.8fr);
 }
 
 .primary-button {
   padding: 0 16px;
   background: var(--green);
   color: #ffffff;
+  font-weight: 700;
 }
 
 .ghost-button {
   padding: 0 14px;
   background: var(--green-soft);
   color: var(--green);
+}
+
+.square-action {
+  display: inline-grid;
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  min-height: 46px;
+  place-items: center;
+  padding: 0;
+  border-radius: 10px;
+}
+
+.square-action span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .tuition-followup-button.is-active {
@@ -2134,7 +2337,7 @@ table {
 }
 
 .student-table {
-  min-width: 1180px;
+  min-width: 1280px;
   table-layout: fixed;
 }
 
@@ -2232,6 +2435,10 @@ tbody tr:last-child td {
   width: 58px;
   color: var(--muted);
   font-weight: 700;
+}
+
+.student-table td.table-group-row {
+  width: auto !important;
 }
 
 .student-table .stt-cell,
@@ -2625,7 +2832,28 @@ body[data-theme="dark"] .tuition-slip-preview {
   }
 
   .app-header h1 {
-    font-size: 30px;
+    font-size: 28px;
+  }
+
+  .app-brand {
+    align-items: center;
+    gap: 12px;
+  }
+
+  .app-brand-mark {
+    display: grid;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+  }
+
+  .app-brand .eyebrow {
+    margin-bottom: 4px;
+    font-size: 10px;
+  }
+
+  .app-brand .nav-collapse-button {
+    display: none;
   }
 
   body[data-theme="dark"] .app-header {
@@ -2695,6 +2923,110 @@ body[data-theme="dark"] .tuition-slip-preview {
     min-height: 42px;
     padding: 0 13px;
     white-space: nowrap;
+  }
+
+  #scheduleTab {
+    padding-top: 12px;
+  }
+
+  #scheduleTab .section-title {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px 42px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  #scheduleTab .section-title > div:first-child {
+    min-width: 0;
+  }
+
+  #scheduleTab .section-title .eyebrow {
+    display: none;
+  }
+
+  #scheduleTab .section-title h2 {
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  #scheduleTab .section-actions {
+    display: contents;
+  }
+
+  #scheduleTab .week-picker {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 6px;
+  }
+
+  #scheduleTab .week-picker label {
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 2px;
+  }
+
+  #scheduleTab .week-picker span {
+    font-size: 10px;
+  }
+
+  #scheduleTab #scheduleWeekSelect {
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+    font-size: 14px;
+  }
+
+  #scheduleTab .week-nav-button {
+    width: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  #scheduleTab #currentWeek {
+    min-height: 38px;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+
+  #scheduleTab .square-action {
+    grid-row: 1;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    border-radius: 10px;
+  }
+
+  #scheduleTab #exportScheduleCsv {
+    grid-column: 2;
+  }
+
+  #scheduleTab #printSchedule {
+    grid-column: 3;
+  }
+
+  #scheduleTab .schedule-week-note {
+    margin: 0 0 10px;
+    padding: 9px 10px;
+  }
+
+  #scheduleTab .schedule-week-note label {
+    gap: 5px;
+  }
+
+  #scheduleTab .schedule-week-note span {
+    font-size: 11px;
+  }
+
+  #scheduleTab .schedule-week-note textarea {
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 14px;
+    line-height: 1.25;
   }
 
   .mobile-bottom-nav {
@@ -2910,6 +3242,30 @@ body[data-theme="dark"] .tuition-slip-preview {
 
   .filters {
     grid-template-columns: 1fr;
+  }
+
+  #studentsTab .filters {
+    grid-template-columns: minmax(170px, 1fr) minmax(160px, 0.9fr) minmax(230px, 0.95fr) minmax(150px, 0.75fr);
+    align-items: end;
+    overflow-x: auto;
+    padding: 10px;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #studentsTab .filters label {
+    min-width: 0;
+  }
+
+  #studentsTab .filters input,
+  #studentsTab .filters select,
+  #studentsTab .filters button {
+    min-height: 38px;
+    font-size: 13px;
+  }
+
+  #studentsTab .filters span {
+    font-size: 11px;
   }
 
   .dashboard {
@@ -3222,83 +3578,134 @@ body[data-theme="dark"] .tuition-slip-preview {
   }
 
   .student-table {
-    display: block;
-    min-width: 0;
+    min-width: 1080px;
+    table-layout: fixed;
   }
 
   .student-table thead {
-    display: none;
+    display: table-header-group;
   }
 
-  .student-table tbody,
-  .student-table tr,
-  .student-table td {
-    display: block;
+  .student-table tbody {
+    display: table-row-group;
   }
 
   .student-table tr {
-    margin-bottom: 10px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    display: table-row;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
     background: #ffffff;
-    box-shadow: 0 8px 20px rgba(30, 42, 39, 0.06);
+    box-shadow: none;
   }
 
+  .student-table th,
   .student-table td {
-    width: auto !important;
-    min-height: auto;
-    padding: 9px 12px;
+    display: table-cell;
+    min-height: 0;
+    padding: 8px 9px;
     border-bottom: 1px solid #edf1ef;
-    font-size: 14px;
+    font-size: 13px;
+    line-height: 1.25;
+    vertical-align: middle;
   }
 
-  .student-table td:last-child {
-    border-bottom: 0;
-  }
-
-  .student-table td::before {
-    display: block;
-    margin-bottom: 3px;
-    color: var(--muted);
-    font-size: 10px;
-    font-weight: 900;
-    letter-spacing: 0.04em;
+  .student-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    font-size: 11px;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
   }
 
-  .student-table td:nth-child(1)::before { content: "No."; }
-  .student-table td:nth-child(2)::before { content: "Student"; }
-  .student-table td:nth-child(3)::before { content: "Class"; }
-  .student-table td:nth-child(4)::before { content: "Contact"; }
-  .student-table td:nth-child(5)::before { content: "Payment"; }
-  .student-table td:nth-child(6)::before { content: "Done"; }
-  .student-table td:nth-child(7)::before { content: "Reminder"; }
-  .student-table td:nth-child(8)::before { content: "Last paid"; }
-  .student-table td:nth-child(9)::before { content: "Next due"; }
-  .student-table td:nth-child(10)::before { content: "Status"; }
-  .student-table td:nth-child(11)::before { content: "Action"; }
+  .student-table td::before {
+    display: none;
+    content: none;
+  }
 
-  .student-table .table-group-row {
-    margin: 14px 0 8px;
+  .student-table th:nth-child(1),
+  .student-table td:nth-child(1) {
+    width: 46px;
+  }
+
+  .student-table th:nth-child(2),
+  .student-table td:nth-child(2) {
+    width: 132px;
+    font-weight: 700;
+  }
+
+  .student-table th:nth-child(3),
+  .student-table td:nth-child(3) {
+    width: 112px;
+  }
+
+  .student-table th:nth-child(4),
+  .student-table td:nth-child(4) {
+    width: 92px;
+  }
+
+  .student-table th:nth-child(5),
+  .student-table td:nth-child(5) {
+    width: 96px;
+  }
+
+  .student-table th:nth-child(6),
+  .student-table td:nth-child(6) {
+    width: 62px;
+  }
+
+  .student-table th:nth-child(7),
+  .student-table td:nth-child(7) {
+    width: 126px;
+  }
+
+  .student-table th:nth-child(8),
+  .student-table td:nth-child(8),
+  .student-table th:nth-child(9),
+  .student-table td:nth-child(9) {
+    width: 94px;
+  }
+
+  .student-table th:nth-child(10),
+  .student-table td:nth-child(10) {
+    width: 100px;
+  }
+
+  .student-table th:nth-child(11),
+  .student-table td:nth-child(11) {
+    width: 126px;
+  }
+
+  .student-table td.table-group-row {
+    display: table-cell;
+    width: auto !important;
+    margin: 0;
     border: 0;
     box-shadow: none;
   }
 
-  .student-table .table-group-row td {
+  .student-table td.table-group-row {
+    padding: 9px 10px;
     border: 0;
-    border-radius: 8px;
-    background: #f0f7f3;
+    border-radius: 0;
+    background: #f6faf8;
     color: var(--green);
-  }
-
-  .student-table .table-group-row td::before {
-    display: none;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
   }
 
   .student-table .student-action-cell {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    display: table-cell;
+    white-space: nowrap;
+  }
+
+  .student-table .payment-button,
+  .student-table .edit-button {
+    min-height: 30px;
+    padding: 0 8px;
+    font-size: 11px;
   }
 
   .attendance-card {
