@@ -4,6 +4,7 @@ const prePaymentHistoryBackupKey = "mandyEnglishStudentSystemBackupBeforePayment
 const driveSyncSettingsKey = "mandyEnglishDriveSyncSettings";
 const userAccountsKey = "mandyEnglishUserAccounts";
 const activeUserKey = "mandyEnglishActiveUser";
+const themePreferenceKey = "mandyEnglishThemePreference";
 const preClassRenameBackupKey = "mandyEnglishStudentSystemBackupBeforeClassRename20260722";
 
 const defaultUserAccounts = [
@@ -154,6 +155,7 @@ const saveDriveSettings = document.querySelector("#saveDriveSettings");
 const driveSyncUrl = document.querySelector("#driveSyncUrl");
 const driveSyncToken = document.querySelector("#driveSyncToken");
 const driveSyncStatus = document.querySelector("#driveSyncStatus");
+const themeToggle = document.querySelector("#themeToggle");
 const currentUserPill = document.querySelector("#currentUserPill");
 const resetOwnPassword = document.querySelector("#resetOwnPassword");
 const signOut = document.querySelector("#signOut");
@@ -246,6 +248,8 @@ let editingAttendanceCell = null;
 let pendingLessonLogSession = null;
 let editingPaymentStudentIndex = null;
 
+applyTheme(getSavedTheme());
+
 document.querySelectorAll(".tab-button").forEach(button => {
   button.addEventListener("click", () => {
     showTab(button.dataset.tab);
@@ -255,6 +259,7 @@ document.querySelectorAll(".tab-button").forEach(button => {
 
 mobileTabsToggle.addEventListener("click", () => toggleMobileMenu("tabs"));
 mobileAccountToggle.addEventListener("click", () => toggleMobileMenu("account"));
+themeToggle.addEventListener("click", toggleTheme);
 mobileNav.className = "mobile-bottom-nav";
 mobileNav.setAttribute("aria-label", "Mobile navigation");
 mobileMoreSheet.className = "mobile-more-sheet";
@@ -4938,6 +4943,29 @@ function showToast(message = "Saved") {
   window.setTimeout(() => toast.classList.remove("show"), 1600);
 }
 
+function getSavedTheme() {
+  const savedTheme = localStorage.getItem(themePreferenceKey);
+  return savedTheme === "dark" ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  const normalizedTheme = theme === "dark" ? "dark" : "light";
+  document.body.dataset.theme = normalizedTheme;
+  document.documentElement.style.colorScheme = normalizedTheme;
+  localStorage.setItem(themePreferenceKey, normalizedTheme);
+
+  if (themeToggle) {
+    themeToggle.textContent = normalizedTheme === "dark" ? "Dark" : "Light";
+    themeToggle.setAttribute("aria-label", `Current theme: ${themeToggle.textContent}. Switch color theme.`);
+  }
+}
+
+function toggleTheme() {
+  const nextTheme = document.body.dataset.theme === "dark" ? "light" : "dark";
+  applyTheme(nextTheme);
+  renderMobileNavigation();
+}
+
 function openStudentModal(index = null) {
   if (!can("students.edit") && !can("all")) {
     window.alert("Your account cannot edit students.");
@@ -5580,6 +5608,7 @@ function renderMobileMoreSheet(moreTabs) {
     { label: "Load from Drive", action: loadDataFromDrive, visible: can("drive.load") || can("all") },
     { label: "Save to Drive", action: saveDataToDrive, visible: can("drive.save") || can("all") },
     { label: "Save changes", action: () => saveData(), visible: can("all") },
+    { label: `Theme: ${document.body.dataset.theme === "dark" ? "Dark" : "Light"}`, action: toggleTheme, visible: Boolean(currentUser) },
     { label: "Reset password", action: () => openPasswordResetModal(false), visible: Boolean(currentUser) },
     { label: "Sign out", action: signOutUser, visible: Boolean(currentUser) }
   ].filter(item => item.visible);

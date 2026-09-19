@@ -10,7 +10,7 @@
   <title>Mandy English Student Management</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/mandy-logo.png">
-  <link rel="stylesheet" href="styles.css?v=20260919-mobile2">
+  <link rel="stylesheet" href="styles.css?v=20260919-theme1">
 </head>
 <body>
   <header class="app-header">
@@ -19,6 +19,7 @@
       <h1>Student Management</h1>
     </div>
     <div class="header-actions">
+      <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch color theme">Light</button>
       <div id="currentUserPill" class="current-user-pill" hidden></div>
       <button id="resetOwnPassword" class="ghost-button" type="button">Reset password</button>
       <button id="signOut" class="ghost-button" type="button">Sign out</button>
@@ -880,7 +881,7 @@
 
   <datalist id="classOptions"></datalist>
   <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
-  <script src="script.js?v=20260919-mobile2"></script>
+  <script src="script.js?v=20260919-theme1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
