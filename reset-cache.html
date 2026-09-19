@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mandy Dashboard Cache Reset</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #f3faf7;
+      color: #12352f;
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      width: min(520px, calc(100% - 32px));
+      padding: 28px;
+      border: 1px solid #c9ded8;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 18px 40px rgba(12, 68, 57, 0.12);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 28px;
+    }
+
+    p {
+      line-height: 1.55;
+    }
+
+    button, a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 10px;
+      border: 0;
+      color: #fff;
+      background: #075247;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      margin-left: 8px;
+      background: #6f827d;
+    }
+
+    #status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #ecf6f2;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Mandy Dashboard Reset</h1>
+    <p>This page clears only the browser cache and service worker for Mandy Dashboard. Your saved dashboard data and Drive settings are kept.</p>
+    <button id="resetCache" type="button">Clear cache and reopen</button>
+    <button id="resetSync" class="secondary" type="button">Clear sync settings too</button>
+    <div id="status">Ready.</div>
+  </main>
+
+  <script>
+    const statusBox = document.querySelector("#status");
+
+    async function clearCache(options = {}) {
+      statusBox.textContent = "Clearing Mandy Dashboard cache...";
+
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(registration => registration.unregister()));
+      }
+
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+      }
+
+      if (options.syncSettings) {
+        localStorage.removeItem("mandyEnglishDriveSyncSettings");
+      }
+
+      statusBox.textContent = "Done. Reopening Mandy Dashboard...";
+      window.setTimeout(() => {
+        window.location.href = "./index.html?v=after-reset-" + Date.now();
+      }, 800);
+    }
+
+    document.querySelector("#resetCache").addEventListener("click", () => {
+      clearCache();
+    });
+
+    document.querySelector("#resetSync").addEventListener("click", () => {
+      clearCache({ syncSettings: true });
+    });
+  </script>
+</body>
+</html>
