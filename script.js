@@ -6229,9 +6229,8 @@ function toggleTuitionFollowup() {
 function updateTuitionFollowupButton() {
   const followupCount = data.students.filter(student => matchesTuitionAlertFilter(student, "priority")).length;
   tuitionFollowupButton.classList.toggle("is-active", isTuitionFollowupActive);
-  tuitionFollowupButton.textContent = isTuitionFollowupActive
-    ? `Showing Tuition Follow-up (${followupCount})`
-    : `Tuition Follow-up (${followupCount})`;
+  tuitionFollowupButton.textContent = `Follow-up (${followupCount})`;
+  tuitionFollowupButton.title = isTuitionFollowupActive ? "Showing tuition follow-up students" : "Show tuition follow-up students";
   tuitionFollowupButton.setAttribute("aria-pressed", isTuitionFollowupActive ? "true" : "false");
 }
 

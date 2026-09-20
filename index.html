@@ -10,7 +10,7 @@
   <title>Mandy English Student Management</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/mandy-logo.png">
-  <link rel="stylesheet" href="styles.css?v=20260920-printfix1">
+  <link rel="stylesheet" href="styles.css?v=20260921-studenttoolbar1">
 </head>
 <body>
   <header class="app-header">
@@ -254,14 +254,14 @@
     </section>
 
     <section id="studentsTab" class="panel tab-panel">
-      <div class="section-title">
+      <div class="section-title student-toolbar">
         <div>
-          <p class="eyebrow">Students</p>
-          <h2>Student List</h2>
+          <h2>Students</h2>
         </div>
-        <div class="section-actions">
-          <a class="ghost-link" href="student-list-template.csv" download>Download CSV form</a>
-          <button id="addStudent" class="primary-button" type="button">Add student</button>
+        <div class="section-actions student-toolbar-actions">
+          <button id="addStudent" class="primary-button compact-action" type="button">Add</button>
+          <a class="ghost-link compact-action" href="student-list-template.csv" download>CSV</a>
+          <button id="tuitionFollowupButton" class="ghost-button tuition-followup-button compact-action" type="button">Follow-up</button>
         </div>
       </div>
       <div class="filters" aria-label="Student filters">
@@ -280,8 +280,7 @@
             <option value="Stopped">Stopped</option>
           </select>
         </label>
-        <button id="tuitionFollowupButton" class="ghost-button tuition-followup-button" type="button">Tuition Follow-up</button>
-        <button id="clearFilters" class="ghost-button" type="button">Clear filters</button>
+        <button id="clearFilters" class="ghost-button clear-filter-button" type="button">Clear</button>
       </div>
       <div class="table-wrap">
         <table class="student-table">
@@ -901,7 +900,7 @@
 
   <datalist id="classOptions"></datalist>
   <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
-  <script src="script.js?v=20260920-printfix1"></script>
+  <script src="script.js?v=20260921-studenttoolbar1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
