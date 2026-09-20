@@ -3719,14 +3719,19 @@ body[data-theme="dark"] .tuition-slip-preview {
 
   .modal-backdrop {
     align-items: flex-end;
+    z-index: 70;
     padding: 10px;
   }
 
   .modal {
     width: 100%;
-    max-height: calc(100dvh - 20px);
+    max-height: calc(100dvh - 102px);
     padding: 18px;
     border-radius: 12px 12px 8px 8px;
+  }
+
+  #studentModal .modal {
+    padding-bottom: 12px;
   }
 
   .modal-header,
@@ -3739,6 +3744,29 @@ body[data-theme="dark"] .tuition-slip-preview {
   .modal-actions button,
   .modal-save-actions button {
     width: 100%;
+  }
+
+  #studentModal .modal-actions {
+    position: sticky;
+    bottom: -12px;
+    z-index: 2;
+    display: block;
+    margin: 16px -18px -12px;
+    padding: 10px 18px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: #ffffff;
+    box-shadow: 0 -10px 24px rgba(30, 42, 39, 0.08);
+  }
+
+  #studentModal .modal-actions > .danger-button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  #studentModal .modal-save-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 
   .tuition-slip-workspace,
@@ -3755,10 +3783,17 @@ body[data-theme="dark"] .tuition-slip-preview {
   }
 
   .toast {
-    right: 10px;
-    bottom: 10px;
-    left: 10px;
+    top: calc(12px + env(safe-area-inset-top));
+    right: 12px;
+    bottom: auto;
+    left: 12px;
+    z-index: 80;
+    transform: translateY(-16px);
     text-align: center;
+  }
+
+  .toast.show {
+    transform: translateY(0);
   }
 }
 
