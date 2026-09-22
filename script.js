@@ -399,10 +399,10 @@ tuitionStudentSelect.addEventListener("change", () => renderTuitionSlip(true));
 [tuitionStudentName, tuitionCourseName, tuitionPackage, tuitionStartDate, tuitionEndDate, tuitionCourseFee, tuitionDiscount, tuitionTotalFee, tuitionDueDate, tuitionComment].forEach(input => {
   input.addEventListener("input", () => renderTuitionSlip(false));
 });
-[tuitionCourseName, tuitionPackage, tuitionStartDate].forEach(input => {
+[tuitionCourseName, tuitionPackage].forEach(input => {
   input.addEventListener("change", () => {
     const student = data.students[Number(tuitionStudentSelect.value)];
-    applyTuitionAutoFields(student, { updateEndDate: true, updateFees: true });
+    applyTuitionAutoFields(student, { updateFees: true });
     renderTuitionSlip(false);
   });
 });
@@ -6110,37 +6110,34 @@ function renderTuitionSlip(resetEditableFields = false) {
   if (student && resetEditableFields) {
     tuitionStudentName.value = student.name;
     tuitionCourseName.value = student.className || "English Communication";
-    tuitionPackage.value = `${getTuitionPackageLessons(student, getTuitionSlipCycleIndex(student))} Sessions`;
-    tuitionStartDate.value = formatLongDateText(getGeneratedTuitionStartDate(student));
-    tuitionDueDate.value = formatLongDateText(student.nextDueDate);
+    tuitionPackage.value = `${getTuitionPackageLessons(student)} Sessions`;
+    tuitionStartDate.value = normalizeDateInput(student.lastPaymentDate);
+    tuitionEndDate.value = "";
+    tuitionDueDate.value = normalizeDateInput(student.nextDueDate);
     tuitionComment.value = getDefaultTuitionComment();
-    applyTuitionAutoFields(student, { updateEndDate: true, updateFees: true });
+    applyTuitionAutoFields(student, { updateFees: true });
   }
 
   slipStudentName.textContent = tuitionStudentName.value || student?.name || "-";
   slipCourseName.textContent = tuitionCourseName.value || student?.className || "-";
   slipPackage.textContent = tuitionPackage.value || "-";
-  slipStartDate.textContent = tuitionStartDate.value || "-";
-  slipEndDate.textContent = tuitionEndDate.value || "-";
+  slipStartDate.textContent = formatTuitionDateForSlip(tuitionStartDate.value);
+  slipEndDate.textContent = formatTuitionDateForSlip(tuitionEndDate.value);
   slipCourseFee.textContent = formatFeeDisplay(tuitionCourseFee.value);
   slipDiscount.textContent = formatFeeDisplay(tuitionDiscount.value || "0 VND");
   slipTotalFee.textContent = formatFeeDisplay(tuitionTotalFee.value);
-  slipDueDate.textContent = tuitionDueDate.value || "-";
+  slipDueDate.textContent = formatTuitionDateForSlip(tuitionDueDate.value);
   slipComment.textContent = tuitionComment.value || "-";
   renderSlipQr();
 }
 
 function getTuitionPackageLessons(student) {
   if (!student) return 0;
-  return getStudentCycleLessons(student, getTuitionSlipCycleIndex(student));
+  return getStudentCycleLessons(student);
 }
 
-function applyTuitionAutoFields(student, { updateEndDate = false, updateFees = false } = {}) {
+function applyTuitionAutoFields(student, { updateFees = false } = {}) {
   if (!student) return;
-
-  if (updateEndDate) {
-    tuitionEndDate.value = getGeneratedTuitionEndDate(student);
-  }
 
   if (updateFees) {
     const courseFee = getGeneratedTuitionCourseFee(student);
@@ -6176,106 +6173,8 @@ function getTuitionPackageLessonsFromInput(student) {
   return Number.isFinite(lessons) && lessons > 0 ? lessons : getTuitionPackageLessons(student);
 }
 
-function getGeneratedTuitionEndDate(student) {
-  if (!student) return "";
-  const startDateValue = normalizeTuitionDateInput(tuitionStartDate.value || getGeneratedTuitionStartDate(student));
-  const className = String(tuitionCourseName.value || student.className || "").trim();
-  const lessons = getTuitionPackageLessonsFromInput(student);
-
-  if (!startDateValue || !className || lessons <= 0) return "";
-
-  let countedLessons = 0;
-  let cursor = parseDateValue(startDateValue);
-
-  for (let dayCount = 0; dayCount < 730; dayCount += 1) {
-    const day = getDayCodeFromDate(cursor);
-    const weekStart = getWeekStart(cursor);
-    const classSlots = getClassesForDayForWeek(day, weekStart).filter(slot => slot.className === className);
-
-    classSlots.forEach(classSlot => {
-      if (countedLessons >= lessons) return;
-      countedLessons += 1;
-    });
-
-    if (countedLessons >= lessons) return formatLongDateText(formatDateValue(cursor));
-    cursor = addDays(cursor, 1);
-  }
-
-  return "";
-}
-
-function getGeneratedTuitionStartDate(student) {
-  if (!student) return "";
-  const cycleIndex = getTuitionSlipCycleIndex(student);
-  const firstAttendanceDate = getAttendanceDateValue(null, student, 0, cycleIndex);
-  const paymentRecord = getPaymentRecordForCycle(student, cycleIndex);
-
-  if (firstAttendanceDate) return firstAttendanceDate;
-
-  const previousCycleLastDate = getTuitionCycleLastAttendanceDate(student, cycleIndex - 1);
-  if (previousCycleLastDate) {
-    return getNextTuitionClassDate(student, previousCycleLastDate, false) || previousCycleLastDate;
-  }
-
-  const fallbackDate = paymentRecord?.date || student.lastPaymentDate || "";
-  return getNextTuitionClassDate(student, fallbackDate, true) || fallbackDate;
-}
-
-function getTuitionSlipCycleIndex(student) {
-  const history = normalizePaymentHistory(student?.paymentHistory);
-  const latestPaymentCycleIndex = history.length ? Math.max(...history.map(record => Number(record.cycleIndex) || 0)) : 0;
-  const latestAttendanceCycleIndex = getLatestTuitionAttendanceCycleIndex(student);
-  const latestCycleIndex = Math.max(latestPaymentCycleIndex, latestAttendanceCycleIndex, getCurrentCycleIndex(student, getStudentCycleLessons(student)));
-  const latestCycleLessons = getStudentCycleLessons(student, latestCycleIndex);
-  const latestCycleAttendanceCount = getAttendanceCycleDateCount(student, latestCycleIndex);
-
-  if (latestCycleAttendanceCount >= latestCycleLessons) return latestCycleIndex + 1;
-  return latestCycleIndex;
-}
-
-function getTuitionCycleLastAttendanceDate(student, cycleIndex) {
-  if (!student || cycleIndex < 0) return "";
-  const totalLessons = getStudentCycleLessons(student, cycleIndex);
-  const dates = [];
-
-  for (let lessonIndex = 0; lessonIndex < totalLessons; lessonIndex += 1) {
-    const dateValue = getAttendanceDateValue(null, student, lessonIndex, cycleIndex);
-    if (dateValue) dates.push(dateValue);
-  }
-
-  return dates.sort().at(-1) || "";
-}
-
-function getLatestTuitionAttendanceCycleIndex(student) {
-  if (!student) return 0;
-  const cycleIndexes = Object.keys(data.attendance)
-    .map(key => {
-      const parts = key.split("|");
-      const keyStudentName = parts[4] || "";
-      if (normalizeSearchText(keyStudentName) !== normalizeSearchText(student.name)) return null;
-      return parts.length >= 7 ? Number(parts[5]) : 0;
-    })
-    .filter(cycleIndex => Number.isFinite(cycleIndex));
-
-  return cycleIndexes.length ? Math.max(...cycleIndexes) : 0;
-}
-
-function getNextTuitionClassDate(student, afterDateValue, includeStartDate = false) {
-  const normalizedDate = normalizeTuitionDateInput(afterDateValue);
-  const className = String(tuitionCourseName.value || student?.className || "").trim();
-  if (!normalizedDate || !className) return "";
-
-  let cursor = includeStartDate ? parseDateValue(normalizedDate) : addDays(parseDateValue(normalizedDate), 1);
-
-  for (let dayCount = 0; dayCount < 365; dayCount += 1) {
-    const day = getDayCodeFromDate(cursor);
-    const weekStart = getWeekStart(cursor);
-    const hasClass = getClassesForDayForWeek(day, weekStart).some(slot => slot.className === className);
-    if (hasClass) return formatDateValue(cursor);
-    cursor = addDays(cursor, 1);
-  }
-
-  return "";
+function formatTuitionDateForSlip(value) {
+  return formatLongDateText(value) || String(value || "").trim() || "-";
 }
 
 function normalizeTuitionDateInput(value) {
