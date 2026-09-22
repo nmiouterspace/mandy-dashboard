@@ -104,6 +104,7 @@ const editingAttendanceRows = new Set();
 const noteEditingAttendanceRows = new Set();
 const attendanceCycleViews = new Map();
 let isTuitionFollowupActive = false;
+let showStoppedStudents = false;
 
 const studentRows = document.querySelector("#studentRows");
 const classRows = document.querySelector("#classRows");
@@ -116,6 +117,7 @@ const classListFilter = document.querySelector("#classListFilter");
 const attendanceClassFilter = document.querySelector("#attendanceClassFilter");
 const filterStatus = document.querySelector("#filterStatus");
 const tuitionFollowupButton = document.querySelector("#tuitionFollowupButton");
+const toggleStoppedStudents = document.querySelector("#toggleStoppedStudents");
 const activeCount = document.querySelector("#activeCount");
 const activeClassCount = document.querySelector("#activeClassCount");
 const pauseCount = document.querySelector("#pauseCount");
@@ -384,6 +386,7 @@ newStudentPayment.addEventListener("change", () => {
   filter.addEventListener("change", renderStudents);
 });
 tuitionFollowupButton.addEventListener("click", toggleTuitionFollowup);
+toggleStoppedStudents.addEventListener("click", toggleStoppedStudentVisibility);
 classListFilter.addEventListener("change", renderClasses);
 attendanceClassFilter.addEventListener("change", renderAttendanceBoard);
 [lessonLogClassFilter, lessonLogTeacherFilter, lessonLogDateFilter].forEach(filter => {
@@ -1888,6 +1891,7 @@ function recoverLegacyTeachersForCurrentWeek() {
 function renderStudents() {
   studentRows.innerHTML = "";
   updateTuitionFollowupButton();
+  updateStoppedStudentToggle();
 
   const entries = getFilteredStudentEntries();
 
@@ -6279,6 +6283,7 @@ function getFilteredStudentEntries() {
     .filter(({ student }) => {
       if (selectedClass && student.className !== selectedClass) return false;
       if (selectedStatus && student.status !== selectedStatus) return false;
+      if (!selectedStatus && !showStoppedStudents && student.status === "Stopped") return false;
       if (!matchesTuitionAlertFilter(student, tuitionAlert)) return false;
       return true;
     })
@@ -6297,6 +6302,24 @@ function updateTuitionFollowupButton() {
   tuitionFollowupButton.textContent = `Follow-up (${followupCount})`;
   tuitionFollowupButton.title = isTuitionFollowupActive ? "Showing tuition follow-up students" : "Show tuition follow-up students";
   tuitionFollowupButton.setAttribute("aria-pressed", isTuitionFollowupActive ? "true" : "false");
+}
+
+function toggleStoppedStudentVisibility() {
+  if (showStoppedStudents || filterStatus.value === "Stopped") {
+    showStoppedStudents = false;
+    if (filterStatus.value === "Stopped") filterStatus.value = "";
+  } else {
+    showStoppedStudents = true;
+  }
+  renderStudents();
+}
+
+function updateStoppedStudentToggle() {
+  const stoppedCountValue = data.students.filter(student => student.status === "Stopped").length;
+  const shouldShowAsActive = showStoppedStudents || filterStatus.value === "Stopped";
+  toggleStoppedStudents.classList.toggle("is-active", shouldShowAsActive);
+  toggleStoppedStudents.textContent = shouldShowAsActive ? `Hide stopped (${stoppedCountValue})` : `Show stopped (${stoppedCountValue})`;
+  toggleStoppedStudents.setAttribute("aria-pressed", shouldShowAsActive ? "true" : "false");
 }
 
 function matchesTuitionAlertFilter(student, filterValue) {
@@ -6824,6 +6847,7 @@ function clearStudentFilters() {
   filterClass.value = "";
   filterStatus.value = "";
   isTuitionFollowupActive = false;
+  showStoppedStudents = false;
   updateTuitionFollowupButton();
   renderStudents();
 }

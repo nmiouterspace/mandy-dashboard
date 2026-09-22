@@ -1041,10 +1041,11 @@ button {
 }
 
 #studentsTab .filters {
-  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto auto;
 }
 
-#studentsTab .clear-filter-button {
+#studentsTab .clear-filter-button,
+#studentsTab .stopped-toggle-button {
   min-width: 96px;
 }
 
@@ -1082,6 +1083,11 @@ button {
   background: #f59e0b;
   color: #ffffff;
   box-shadow: 0 8px 18px rgba(245, 158, 11, 0.22);
+}
+
+.stopped-toggle-button.is-active {
+  background: #fdecec;
+  color: var(--red);
 }
 
 .ghost-link,
@@ -2379,8 +2385,9 @@ table {
 }
 
 .student-table {
-  min-width: 1280px;
+  min-width: 0;
   table-layout: fixed;
+  font-size: 13px;
 }
 
 .class-table {
@@ -2402,62 +2409,68 @@ th {
   white-space: nowrap;
 }
 
+.student-table th {
+  white-space: normal;
+  line-height: 1.2;
+}
+
 .student-table th,
 .student-table td {
   overflow-wrap: anywhere;
+  padding: 8px 8px;
 }
 
 .student-table th:nth-child(1),
 .student-table td:nth-child(1) {
-  width: 52px;
+  width: 4%;
 }
 
 .student-table th:nth-child(2),
 .student-table td:nth-child(2) {
-  width: 150px;
+  width: 13%;
 }
 
 .student-table th:nth-child(3),
 .student-table td:nth-child(3) {
-  width: 128px;
+  width: 10%;
 }
 
 .student-table th:nth-child(4),
 .student-table td:nth-child(4) {
-  width: 122px;
+  width: 8%;
 }
 
 .student-table th:nth-child(5),
 .student-table td:nth-child(5) {
-  width: 122px;
+  width: 9%;
 }
 
 .student-table th:nth-child(6),
 .student-table td:nth-child(6) {
-  width: 74px;
+  width: 6%;
   text-align: center;
 }
 
 .student-table th:nth-child(7),
 .student-table td:nth-child(7) {
-  width: 138px;
+  width: 13%;
 }
 
 .student-table th:nth-child(8),
 .student-table td:nth-child(8),
 .student-table th:nth-child(9),
 .student-table td:nth-child(9) {
-  width: 112px;
+  width: 9%;
 }
 
 .student-table th:nth-child(10),
 .student-table td:nth-child(10) {
-  width: 118px;
+  width: 8%;
 }
 
 .student-table th:nth-child(11),
 .student-table td:nth-child(11) {
-  width: 142px;
+  width: 11%;
 }
 
 tbody tr:last-child td {
@@ -2506,8 +2519,12 @@ tbody tr:last-child td {
 .student-table .edit-button {
   min-width: 0;
   min-height: 34px;
-  padding: 0 10px;
+  padding: 0 8px;
   font-size: 12px;
+}
+
+.student-table .payment-button {
+  min-width: 66px;
 }
 
 .action-cell {

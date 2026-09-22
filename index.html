@@ -10,7 +10,7 @@
   <title>Mandy English Student Management</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/mandy-logo.png">
-  <link rel="stylesheet" href="styles.css?v=20260921-studenttoolbar1">
+  <link rel="stylesheet" href="styles.css?v=20260922-studentsfit1">
 </head>
 <body>
   <header class="app-header">
@@ -280,6 +280,7 @@
             <option value="Stopped">Stopped</option>
           </select>
         </label>
+        <button id="toggleStoppedStudents" class="ghost-button stopped-toggle-button" type="button" aria-pressed="false">Show stopped</button>
         <button id="clearFilters" class="ghost-button clear-filter-button" type="button">Clear</button>
       </div>
       <div class="table-wrap">
@@ -900,7 +901,7 @@
 
   <datalist id="classOptions"></datalist>
   <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
-  <script src="script.js?v=20260922-tuitiondates1"></script>
+  <script src="script.js?v=20260922-studentsfit1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
