@@ -6209,13 +6209,53 @@ function getGeneratedTuitionStartDate(student) {
   const cycleIndex = getTuitionSlipCycleIndex(student);
   const firstAttendanceDate = getAttendanceDateValue(null, student, 0, cycleIndex);
   const paymentRecord = getPaymentRecordForCycle(student, cycleIndex);
-  return firstAttendanceDate || paymentRecord?.date || student.lastPaymentDate || "";
+
+  if (firstAttendanceDate) return firstAttendanceDate;
+
+  const previousCycleLastDate = getTuitionCycleLastAttendanceDate(student, cycleIndex - 1);
+  if (previousCycleLastDate) {
+    return getNextTuitionClassDate(student, previousCycleLastDate, false) || previousCycleLastDate;
+  }
+
+  const fallbackDate = paymentRecord?.date || student.lastPaymentDate || "";
+  return getNextTuitionClassDate(student, fallbackDate, true) || fallbackDate;
 }
 
 function getTuitionSlipCycleIndex(student) {
   const history = normalizePaymentHistory(student?.paymentHistory);
   if (history.length) return Math.max(...history.map(record => Number(record.cycleIndex) || 0));
   return getCurrentCycleIndex(student, getStudentCycleLessons(student));
+}
+
+function getTuitionCycleLastAttendanceDate(student, cycleIndex) {
+  if (!student || cycleIndex < 0) return "";
+  const totalLessons = getStudentCycleLessons(student, cycleIndex);
+  const dates = [];
+
+  for (let lessonIndex = 0; lessonIndex < totalLessons; lessonIndex += 1) {
+    const dateValue = getAttendanceDateValue(null, student, lessonIndex, cycleIndex);
+    if (dateValue) dates.push(dateValue);
+  }
+
+  return dates.sort().at(-1) || "";
+}
+
+function getNextTuitionClassDate(student, afterDateValue, includeStartDate = false) {
+  const normalizedDate = normalizeTuitionDateInput(afterDateValue);
+  const className = String(tuitionCourseName.value || student?.className || "").trim();
+  if (!normalizedDate || !className) return "";
+
+  let cursor = includeStartDate ? parseDateValue(normalizedDate) : addDays(parseDateValue(normalizedDate), 1);
+
+  for (let dayCount = 0; dayCount < 365; dayCount += 1) {
+    const day = getDayCodeFromDate(cursor);
+    const weekStart = getWeekStart(cursor);
+    const hasClass = getClassesForDayForWeek(day, weekStart).some(slot => slot.className === className);
+    if (hasClass) return formatDateValue(cursor);
+    cursor = addDays(cursor, 1);
+  }
+
+  return "";
 }
 
 function normalizeTuitionDateInput(value) {
