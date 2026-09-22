@@ -6214,7 +6214,7 @@ function getGeneratedTuitionStartDate(student) {
 
   const previousCycleLastDate = getTuitionCycleLastAttendanceDate(student, cycleIndex - 1);
   if (previousCycleLastDate) {
-    return getNextTuitionClassDate(student, previousCycleLastDate, false, true) || previousCycleLastDate;
+    return getNextTuitionClassDate(student, previousCycleLastDate, false) || previousCycleLastDate;
   }
 
   const fallbackDate = paymentRecord?.date || student.lastPaymentDate || "";
@@ -6260,15 +6260,12 @@ function getLatestTuitionAttendanceCycleIndex(student) {
   return cycleIndexes.length ? Math.max(...cycleIndexes) : 0;
 }
 
-function getNextTuitionClassDate(student, afterDateValue, includeStartDate = false, startFromNextWeek = false) {
+function getNextTuitionClassDate(student, afterDateValue, includeStartDate = false) {
   const normalizedDate = normalizeTuitionDateInput(afterDateValue);
   const className = String(tuitionCourseName.value || student?.className || "").trim();
   if (!normalizedDate || !className) return "";
 
   let cursor = includeStartDate ? parseDateValue(normalizedDate) : addDays(parseDateValue(normalizedDate), 1);
-  if (startFromNextWeek) {
-    cursor = getWeekStart(addDays(parseDateValue(normalizedDate), 7));
-  }
 
   for (let dayCount = 0; dayCount < 365; dayCount += 1) {
     const day = getDayCodeFromDate(cursor);
