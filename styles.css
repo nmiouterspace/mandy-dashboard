@@ -2290,10 +2290,12 @@ button {
 }
 
 .student-action-cell {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  white-space: nowrap;
   min-width: 0;
+}
+
+.student-action-cell button + button {
+  margin-left: 6px;
 }
 
 .payment-button {
@@ -2512,7 +2514,7 @@ tbody tr:last-child td {
 }
 
 .student-table .student-action-cell {
-  justify-content: flex-start;
+  white-space: nowrap;
 }
 
 .student-table .payment-button,
@@ -2525,6 +2527,10 @@ tbody tr:last-child td {
 
 .student-table .payment-button {
   min-width: 66px;
+}
+
+.student-table .edit-button {
+  min-width: 42px;
 }
 
 .action-cell {
