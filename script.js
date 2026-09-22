@@ -6214,7 +6214,7 @@ function getGeneratedTuitionStartDate(student) {
 
   const previousCycleLastDate = getTuitionCycleLastAttendanceDate(student, cycleIndex - 1);
   if (previousCycleLastDate) {
-    return getNextTuitionClassDate(student, previousCycleLastDate, false) || previousCycleLastDate;
+    return getNextTuitionClassDate(student, previousCycleLastDate, false, true) || previousCycleLastDate;
   }
 
   const fallbackDate = paymentRecord?.date || student.lastPaymentDate || "";
@@ -6223,8 +6223,14 @@ function getGeneratedTuitionStartDate(student) {
 
 function getTuitionSlipCycleIndex(student) {
   const history = normalizePaymentHistory(student?.paymentHistory);
-  if (history.length) return Math.max(...history.map(record => Number(record.cycleIndex) || 0));
-  return getCurrentCycleIndex(student, getStudentCycleLessons(student));
+  const latestPaymentCycleIndex = history.length ? Math.max(...history.map(record => Number(record.cycleIndex) || 0)) : 0;
+  const latestAttendanceCycleIndex = getLatestTuitionAttendanceCycleIndex(student);
+  const latestCycleIndex = Math.max(latestPaymentCycleIndex, latestAttendanceCycleIndex, getCurrentCycleIndex(student, getStudentCycleLessons(student)));
+  const latestCycleLessons = getStudentCycleLessons(student, latestCycleIndex);
+  const latestCycleAttendanceCount = getAttendanceCycleDateCount(student, latestCycleIndex);
+
+  if (latestCycleAttendanceCount >= latestCycleLessons) return latestCycleIndex + 1;
+  return latestCycleIndex;
 }
 
 function getTuitionCycleLastAttendanceDate(student, cycleIndex) {
@@ -6240,12 +6246,29 @@ function getTuitionCycleLastAttendanceDate(student, cycleIndex) {
   return dates.sort().at(-1) || "";
 }
 
-function getNextTuitionClassDate(student, afterDateValue, includeStartDate = false) {
+function getLatestTuitionAttendanceCycleIndex(student) {
+  if (!student) return 0;
+  const cycleIndexes = Object.keys(data.attendance)
+    .map(key => {
+      const parts = key.split("|");
+      const keyStudentName = parts[4] || "";
+      if (normalizeSearchText(keyStudentName) !== normalizeSearchText(student.name)) return null;
+      return parts.length >= 7 ? Number(parts[5]) : 0;
+    })
+    .filter(cycleIndex => Number.isFinite(cycleIndex));
+
+  return cycleIndexes.length ? Math.max(...cycleIndexes) : 0;
+}
+
+function getNextTuitionClassDate(student, afterDateValue, includeStartDate = false, startFromNextWeek = false) {
   const normalizedDate = normalizeTuitionDateInput(afterDateValue);
   const className = String(tuitionCourseName.value || student?.className || "").trim();
   if (!normalizedDate || !className) return "";
 
   let cursor = includeStartDate ? parseDateValue(normalizedDate) : addDays(parseDateValue(normalizedDate), 1);
+  if (startFromNextWeek) {
+    cursor = getWeekStart(addDays(parseDateValue(normalizedDate), 7));
+  }
 
   for (let dayCount = 0; dayCount < 365; dayCount += 1) {
     const day = getDayCodeFromDate(cursor);
