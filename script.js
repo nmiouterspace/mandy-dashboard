@@ -6110,8 +6110,8 @@ function renderTuitionSlip(resetEditableFields = false) {
   if (student && resetEditableFields) {
     tuitionStudentName.value = student.name;
     tuitionCourseName.value = student.className || "English Communication";
-    tuitionPackage.value = `${getTuitionPackageLessons(student)} Sessions`;
-    tuitionStartDate.value = formatLongDateText(student.lastPaymentDate);
+    tuitionPackage.value = `${getTuitionPackageLessons(student, getTuitionSlipCycleIndex(student))} Sessions`;
+    tuitionStartDate.value = formatLongDateText(getGeneratedTuitionStartDate(student));
     tuitionDueDate.value = formatLongDateText(student.nextDueDate);
     tuitionComment.value = getDefaultTuitionComment();
     applyTuitionAutoFields(student, { updateEndDate: true, updateFees: true });
@@ -6132,7 +6132,7 @@ function renderTuitionSlip(resetEditableFields = false) {
 
 function getTuitionPackageLessons(student) {
   if (!student) return 0;
-  return getStudentCycleLessons(student);
+  return getStudentCycleLessons(student, getTuitionSlipCycleIndex(student));
 }
 
 function applyTuitionAutoFields(student, { updateEndDate = false, updateFees = false } = {}) {
@@ -6178,7 +6178,7 @@ function getTuitionPackageLessonsFromInput(student) {
 
 function getGeneratedTuitionEndDate(student) {
   if (!student) return "";
-  const startDateValue = normalizeTuitionDateInput(tuitionStartDate.value || student.lastPaymentDate);
+  const startDateValue = normalizeTuitionDateInput(tuitionStartDate.value || getGeneratedTuitionStartDate(student));
   const className = String(tuitionCourseName.value || student.className || "").trim();
   const lessons = getTuitionPackageLessonsFromInput(student);
 
@@ -6194,10 +6194,7 @@ function getGeneratedTuitionEndDate(student) {
 
     classSlots.forEach(classSlot => {
       if (countedLessons >= lessons) return;
-      const teacher =
-        data.teachers[getTeacherKey(day, classSlot, cursor)] ||
-        getLegacyTeacherForWeek(getLegacyTeacherKey(day, classSlot), weekStart);
-      if (!isOffTeacher(teacher)) countedLessons += 1;
+      countedLessons += 1;
     });
 
     if (countedLessons >= lessons) return formatLongDateText(formatDateValue(cursor));
@@ -6205,6 +6202,20 @@ function getGeneratedTuitionEndDate(student) {
   }
 
   return "";
+}
+
+function getGeneratedTuitionStartDate(student) {
+  if (!student) return "";
+  const cycleIndex = getTuitionSlipCycleIndex(student);
+  const firstAttendanceDate = getAttendanceDateValue(null, student, 0, cycleIndex);
+  const paymentRecord = getPaymentRecordForCycle(student, cycleIndex);
+  return firstAttendanceDate || paymentRecord?.date || student.lastPaymentDate || "";
+}
+
+function getTuitionSlipCycleIndex(student) {
+  const history = normalizePaymentHistory(student?.paymentHistory);
+  if (history.length) return Math.max(...history.map(record => Number(record.cycleIndex) || 0));
+  return getCurrentCycleIndex(student, getStudentCycleLessons(student));
 }
 
 function normalizeTuitionDateInput(value) {
