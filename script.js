@@ -399,6 +399,19 @@ tuitionStudentSelect.addEventListener("change", () => renderTuitionSlip(true));
 [tuitionStudentName, tuitionCourseName, tuitionPackage, tuitionStartDate, tuitionEndDate, tuitionCourseFee, tuitionDiscount, tuitionTotalFee, tuitionDueDate, tuitionComment].forEach(input => {
   input.addEventListener("input", () => renderTuitionSlip(false));
 });
+[tuitionCourseName, tuitionPackage, tuitionStartDate].forEach(input => {
+  input.addEventListener("change", () => {
+    const student = data.students[Number(tuitionStudentSelect.value)];
+    applyTuitionAutoFields(student, { updateEndDate: true, updateFees: true });
+    renderTuitionSlip(false);
+  });
+});
+[tuitionCourseFee, tuitionDiscount].forEach(input => {
+  input.addEventListener("change", () => {
+    applyTuitionTotalFromFee();
+    renderTuitionSlip(false);
+  });
+});
 printTuitionSlip.addEventListener("click", printTuitionSlipPreview);
 assistantForm.addEventListener("submit", event => {
   event.preventDefault();
@@ -6099,12 +6112,9 @@ function renderTuitionSlip(resetEditableFields = false) {
     tuitionCourseName.value = student.className || "English Communication";
     tuitionPackage.value = `${getTuitionPackageLessons(student)} Sessions`;
     tuitionStartDate.value = formatLongDateText(student.lastPaymentDate);
-    tuitionEndDate.value = "";
-    tuitionCourseFee.value = "";
-    tuitionDiscount.value = "0 VND";
-    tuitionTotalFee.value = "";
     tuitionDueDate.value = formatLongDateText(student.nextDueDate);
     tuitionComment.value = getDefaultTuitionComment();
+    applyTuitionAutoFields(student, { updateEndDate: true, updateFees: true });
   }
 
   slipStudentName.textContent = tuitionStudentName.value || student?.name || "-";
@@ -6123,6 +6133,91 @@ function renderTuitionSlip(resetEditableFields = false) {
 function getTuitionPackageLessons(student) {
   if (!student) return 0;
   return getStudentCycleLessons(student);
+}
+
+function applyTuitionAutoFields(student, { updateEndDate = false, updateFees = false } = {}) {
+  if (!student) return;
+
+  if (updateEndDate) {
+    tuitionEndDate.value = getGeneratedTuitionEndDate(student);
+  }
+
+  if (updateFees) {
+    const courseFee = getGeneratedTuitionCourseFee(student);
+    const discountAmount = getGeneratedTuitionDiscountAmount(student, courseFee);
+    tuitionCourseFee.value = formatCurrency(courseFee);
+    tuitionDiscount.value = formatCurrency(discountAmount);
+    tuitionTotalFee.value = formatCurrency(Math.max(0, courseFee - discountAmount));
+  }
+}
+
+function applyTuitionTotalFromFee() {
+  const courseFee = parseMoneyValue(tuitionCourseFee.value);
+  const discountAmount = parseMoneyValue(tuitionDiscount.value);
+  tuitionTotalFee.value = formatCurrency(Math.max(0, courseFee - discountAmount));
+}
+
+function getGeneratedTuitionCourseFee(student) {
+  if (!student) return 0;
+  const lessons = getTuitionPackageLessonsFromInput(student);
+  const feePerLesson = getClassFeePerLesson(tuitionCourseName.value || student.className);
+  return lessons * feePerLesson;
+}
+
+function getGeneratedTuitionDiscountAmount(student, courseFee) {
+  if (!student || !isDiscountPaymentType(student.paymentType)) return 0;
+  const discountPercent = normalizeDiscountPercent(student.discountPercent);
+  return Math.round((courseFee * discountPercent) / 100);
+}
+
+function getTuitionPackageLessonsFromInput(student) {
+  const lessonsMatch = String(tuitionPackage.value || "").match(/\d+/);
+  const lessons = lessonsMatch ? Number(lessonsMatch[0]) : 0;
+  return Number.isFinite(lessons) && lessons > 0 ? lessons : getTuitionPackageLessons(student);
+}
+
+function getGeneratedTuitionEndDate(student) {
+  if (!student) return "";
+  const startDateValue = normalizeTuitionDateInput(tuitionStartDate.value || student.lastPaymentDate);
+  const className = String(tuitionCourseName.value || student.className || "").trim();
+  const lessons = getTuitionPackageLessonsFromInput(student);
+
+  if (!startDateValue || !className || lessons <= 0) return "";
+
+  let countedLessons = 0;
+  let cursor = parseDateValue(startDateValue);
+
+  for (let dayCount = 0; dayCount < 730; dayCount += 1) {
+    const day = getDayCodeFromDate(cursor);
+    const weekStart = getWeekStart(cursor);
+    const classSlots = getClassesForDayForWeek(day, weekStart).filter(slot => slot.className === className);
+
+    classSlots.forEach(classSlot => {
+      if (countedLessons >= lessons) return;
+      const teacher =
+        data.teachers[getTeacherKey(day, classSlot, cursor)] ||
+        getLegacyTeacherForWeek(getLegacyTeacherKey(day, classSlot), weekStart);
+      if (!isOffTeacher(teacher)) countedLessons += 1;
+    });
+
+    if (countedLessons >= lessons) return formatLongDateText(formatDateValue(cursor));
+    cursor = addDays(cursor, 1);
+  }
+
+  return "";
+}
+
+function normalizeTuitionDateInput(value) {
+  const cleanValue = String(value || "").trim();
+  const normalizedDate = normalizeDateInput(cleanValue);
+  if (normalizedDate) return normalizedDate;
+
+  const parsedTime = Date.parse(cleanValue);
+  if (!Number.isFinite(parsedTime)) return "";
+
+  const date = new Date(parsedTime);
+  if (Number.isNaN(date.getTime())) return "";
+  return formatDateValue(date);
 }
 
 function getDefaultTuitionComment() {
@@ -6147,7 +6242,7 @@ function formatFeeDisplay(value) {
 }
 
 function formatLongDateText(value) {
-  const normalizedDate = normalizeDateInput(value);
+  const normalizedDate = normalizeTuitionDateInput(value);
   if (!normalizedDate) return "";
 
   const date = parseDateValue(normalizedDate);
