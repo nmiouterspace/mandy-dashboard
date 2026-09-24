@@ -10,7 +10,7 @@
   <title>Mandy English Student Management</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/mandy-logo.png">
-  <link rel="stylesheet" href="styles.css?v=20260922-studentsfit2">
+  <link rel="stylesheet" href="styles.css?v=20260924-quickload1">
 </head>
 <body>
   <header class="app-header">
@@ -25,9 +25,23 @@
       <button id="sidebarToggle" class="sidebar-toggle nav-collapse-button" type="button" aria-label="Collapse navigation" aria-expanded="true">
         <span aria-hidden="true">☰</span>
       </button>
+      <button id="mobileQuickLoadDriveData" class="quick-drive-button mobile-quick-drive" type="button" aria-label="Load data from Drive" title="Load from Drive">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 4v10"/>
+          <path d="m8 10 4 4 4-4"/>
+          <path d="M5 17.5A4.5 4.5 0 0 1 7.8 9.4 5.5 5.5 0 0 1 18.4 11 3.5 3.5 0 0 1 18 18H6.5"/>
+        </svg>
+      </button>
     </div>
     <div class="header-actions">
       <button id="themeToggle" class="theme-toggle" type="button" aria-label="Theme is fixed to light" hidden>Light</button>
+      <button id="quickLoadDriveData" class="quick-drive-button" type="button" aria-label="Load data from Drive" title="Load from Drive">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 4v10"/>
+          <path d="m8 10 4 4 4-4"/>
+          <path d="M5 17.5A4.5 4.5 0 0 1 7.8 9.4 5.5 5.5 0 0 1 18.4 11 3.5 3.5 0 0 1 18 18H6.5"/>
+        </svg>
+      </button>
       <div class="account-menu">
         <button id="currentUserPill" class="current-user-pill" type="button" aria-haspopup="true" aria-expanded="false" hidden></button>
         <div id="accountDropdown" class="account-dropdown" aria-label="Account tools">
@@ -901,7 +915,7 @@
 
   <datalist id="classOptions"></datalist>
   <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
-  <script src="script.js?v=20260922-studentsfit2"></script>
+  <script src="script.js?v=20260924-quickload1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

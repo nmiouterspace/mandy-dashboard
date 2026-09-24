@@ -181,6 +181,39 @@ body[data-theme="dark"] .app-header .current-user-pill span {
   display: none !important;
 }
 
+.quick-drive-button {
+  display: inline-grid;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.quick-drive-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.quick-drive-button:hover {
+  background: var(--green);
+  color: #ffffff;
+}
+
+.mobile-quick-drive {
+  display: none;
+}
+
 .account-menu {
   position: relative;
 }
@@ -2942,6 +2975,15 @@ body[data-theme="dark"] .tuition-slip-preview {
 
   .app-brand .nav-collapse-button {
     display: none;
+  }
+
+  .mobile-quick-drive {
+    display: inline-grid;
+    margin-left: auto;
+  }
+
+  #quickLoadDriveData {
+    display: none !important;
   }
 
   body[data-theme="dark"] .app-header {
