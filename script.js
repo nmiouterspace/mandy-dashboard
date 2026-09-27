@@ -253,6 +253,9 @@ const mobileMoreSheet = document.createElement("div");
 const mobileHomePanel = document.createElement("section");
 let selectedWeekStart = getWeekStart(new Date());
 let mobileScheduleDayIndex = null;
+let mobileScheduleSwipeStartX = 0;
+let mobileScheduleSwipeStartY = 0;
+let mobileScheduleSwipeTracking = false;
 let editingAttendanceCell = null;
 let pendingLessonLogSession = null;
 let editingPaymentStudentIndex = null;
@@ -270,6 +273,8 @@ document.querySelectorAll(".tab-button").forEach(button => {
 mobileTabsToggle.addEventListener("click", () => toggleMobileMenu("tabs"));
 mobileAccountToggle.addEventListener("click", () => toggleMobileMenu("account"));
 sidebarToggle.addEventListener("click", toggleSidebar);
+mobileScheduleList?.addEventListener("touchstart", handleMobileScheduleTouchStart, { passive: true });
+mobileScheduleList?.addEventListener("touchend", handleMobileScheduleTouchEnd, { passive: true });
 themeToggle.addEventListener("click", toggleTheme);
 currentUserPill.addEventListener("click", event => {
   event.stopPropagation();
@@ -4495,6 +4500,48 @@ function renderWeeklySchedule() {
       weeklySchedule.append(cell);
     });
   });
+}
+
+function isMobileScheduleSwipeInteractiveTarget(target) {
+  return Boolean(target.closest("button, input, textarea, select, a, [contenteditable='true']"));
+}
+
+function handleMobileScheduleTouchStart(event) {
+  if (!event.touches.length || isMobileScheduleSwipeInteractiveTarget(event.target)) {
+    mobileScheduleSwipeTracking = false;
+    return;
+  }
+
+  const touch = event.touches[0];
+  mobileScheduleSwipeStartX = touch.clientX;
+  mobileScheduleSwipeStartY = touch.clientY;
+  mobileScheduleSwipeTracking = true;
+}
+
+function handleMobileScheduleTouchEnd(event) {
+  if (!mobileScheduleSwipeTracking || !event.changedTouches.length) return;
+
+  const touch = event.changedTouches[0];
+  const deltaX = touch.clientX - mobileScheduleSwipeStartX;
+  const deltaY = touch.clientY - mobileScheduleSwipeStartY;
+  mobileScheduleSwipeTracking = false;
+
+  if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+
+  moveMobileScheduleDay(deltaX < 0 ? 1 : -1);
+}
+
+function moveMobileScheduleDay(step) {
+  const weekDates = getSelectedWeekDates();
+  const todayValue = formatDateValue(new Date());
+  const todayIndex = weekDates.findIndex(date => formatDateValue(date) === todayValue);
+  const currentIndex = mobileScheduleDayIndex === null ? (todayIndex >= 0 ? todayIndex : 0) : mobileScheduleDayIndex;
+  const nextIndex = Math.max(0, Math.min(6, currentIndex + step));
+
+  if (nextIndex === currentIndex) return;
+
+  mobileScheduleDayIndex = nextIndex;
+  renderWeeklySchedule();
 }
 
 function renderMobileScheduleList() {
