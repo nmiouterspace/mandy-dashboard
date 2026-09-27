@@ -256,6 +256,7 @@ let mobileScheduleDayIndex = null;
 let mobileScheduleSwipeStartX = 0;
 let mobileScheduleSwipeStartY = 0;
 let mobileScheduleSwipeTracking = false;
+let mobileScheduleSlideDirection = 0;
 let editingAttendanceCell = null;
 let pendingLessonLogSession = null;
 let editingPaymentStudentIndex = null;
@@ -4541,6 +4542,7 @@ function moveMobileScheduleDay(step) {
   if (nextIndex === currentIndex) return;
 
   mobileScheduleDayIndex = nextIndex;
+  mobileScheduleSlideDirection = step;
   renderWeeklySchedule();
 }
 
@@ -4573,6 +4575,8 @@ function renderMobileScheduleList() {
     button.className = index === activeIndex ? "mobile-day-chip active" : "mobile-day-chip";
     button.innerHTML = `<strong>${day}</strong><span>${formatShortDate(weekDates[index])}</span>`;
     button.addEventListener("click", () => {
+      if (index === mobileScheduleDayIndex) return;
+      mobileScheduleSlideDirection = index > mobileScheduleDayIndex ? 1 : -1;
       mobileScheduleDayIndex = index;
       renderWeeklySchedule();
     });
@@ -4580,10 +4584,18 @@ function renderMobileScheduleList() {
   });
 
   const heading = document.createElement("div");
+  const dayContent = document.createElement("div");
+  const slideDirection = mobileScheduleSlideDirection;
+
   heading.className = "mobile-schedule-heading";
   heading.innerHTML = `<span>${formatShortDate(activeDate)}</span><strong>${classesForDay.length} classes</strong>`;
+  dayContent.className = "mobile-schedule-day-content";
+  if (slideDirection < 0) dayContent.classList.add("slide-from-left");
+  if (slideDirection > 0) dayContent.classList.add("slide-from-right");
+  mobileScheduleSlideDirection = 0;
 
-  mobileScheduleList.append(dayPicker, heading);
+  mobileScheduleList.append(dayPicker, dayContent);
+  dayContent.append(heading);
 
   shifts.forEach(shift => {
     const shiftItems = classesForDay.filter(item => getShiftKey(item.startTime) === shift.key);
@@ -4605,7 +4617,7 @@ function renderMobileScheduleList() {
       section.append(createMobileScheduleCard(activeDay, item, activeDate));
     });
 
-    mobileScheduleList.append(section);
+    dayContent.append(section);
   });
 }
 

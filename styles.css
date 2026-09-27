@@ -3457,7 +3457,44 @@ body[data-theme="dark"] .tuition-slip-preview {
 
   .mobile-schedule-list {
     display: block;
+    overflow: hidden;
     touch-action: pan-y;
+  }
+
+  .mobile-schedule-day-content {
+    will-change: transform, opacity;
+  }
+
+  .mobile-schedule-day-content.slide-from-right {
+    animation: mobileDaySlideFromRight 180ms ease-out;
+  }
+
+  .mobile-schedule-day-content.slide-from-left {
+    animation: mobileDaySlideFromLeft 180ms ease-out;
+  }
+
+  @keyframes mobileDaySlideFromRight {
+    from {
+      opacity: 0.35;
+      transform: translateX(22px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes mobileDaySlideFromLeft {
+    from {
+      opacity: 0.35;
+      transform: translateX(-22px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 
   .mobile-day-picker {
