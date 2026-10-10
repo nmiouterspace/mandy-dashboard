@@ -6362,7 +6362,7 @@ function toggleTuitionFollowup() {
 }
 
 function updateTuitionFollowupButton() {
-  const followupCount = data.students.filter(student => matchesTuitionAlertFilter(student, "priority")).length;
+  const followupCount = data.students.filter(student => student.status === "Active" && matchesTuitionAlertFilter(student, "priority")).length;
   tuitionFollowupButton.classList.toggle("is-active", isTuitionFollowupActive);
   tuitionFollowupButton.textContent = `Follow-up (${followupCount})`;
   tuitionFollowupButton.title = isTuitionFollowupActive ? "Showing tuition follow-up students" : "Show tuition follow-up students";
@@ -6861,9 +6861,12 @@ function compareStudentEntries(first, second, tuitionAlert = "") {
 
 function getTuitionFollowupRank(student) {
   const daysUntilDue = getDaysUntilDue(student.nextDueDate);
-  if (isPaymentDueNow(student) || (daysUntilDue !== null && daysUntilDue <= 0)) return 0;
+  const reminder = getPaymentReminder(student);
+
+  if (reminder.className === "reminder-due" || (daysUntilDue !== null && daysUntilDue <= 0)) return 0;
   if (daysUntilDue === 1) return 1;
   if (daysUntilDue === 2) return 2;
+  if (reminder.className === "reminder-soon") return 2;
   return 3;
 }
 
