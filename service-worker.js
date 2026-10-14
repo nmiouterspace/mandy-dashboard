@@ -1,9 +1,9 @@
-const CACHE_NAME = "mandy-dashboard-v20261010-followup1";
+const CACHE_NAME = "mandy-dashboard-v20261014-notes1";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20261010-followup1",
-  "./script.js?v=20261010-followup1",
+  "./styles.css?v=20261014-notes1",
+  "./script.js?v=20261014-notes1",
   "./manifest.webmanifest",
   "./assets/mandy-logo.png",
   "./assets/payment-qr.png"

@@ -1047,7 +1047,7 @@ async function saveDataToDrive() {
   try {
     setDriveButtonsBusy(true);
     updateDriveSyncStatus("Saving to Drive...");
-    await sendDriveSyncRequest(settings, {
+    const saveResult = await sendDriveSyncRequest(settings, {
       action: "save",
       payload: {
         app: "Mandy English Student Management",
@@ -1058,8 +1058,7 @@ async function saveDataToDrive() {
       }
     });
     rememberDriveSync(settings);
-    updateDriveSyncStatus(`Saved: ${formatShortDateTime(new Date().toISOString())}`);
-    showToast("Saved to Drive");
+    showMandySaveResult(saveResult);
   } catch (error) {
     window.alert(`Cannot save to Google Drive.\n\n${error.message || "Please check the Web App URL and sync password."}`);
     updateDriveSyncStatus("Save failed");
@@ -1138,28 +1137,34 @@ async function loadDriveDataWithJsonp(settings, body) {
 }
 
 async function saveDriveDataWithoutCors(settings, body) {
-  const request = JSON.stringify({
-    requestId: `drive-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    token: settings.token,
-    ...body
-  });
+  const saveRequestId = `drive-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const request = JSON.stringify({ ...body, requestId: saveRequestId, token: settings.token });
   const formData = new URLSearchParams();
-  formData.set("request", request);
-
+  formData.set('request', request);
   await fetch(settings.url, {
-    method: "POST",
-    mode: "no-cors",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
-    },
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
     body: formData.toString()
   });
-
-  return {
-    ok: true,
-    savedAt: new Date().toISOString()
-  };
+  // An opaque response cannot prove the server saved anything. Fetch a
+  // matching authenticated receipt; never turn receipt errors into success.
+  const receipt = await loadDriveDataWithJsonp(settings, { action: 'save-status', saveRequestId });
+  if (!receipt.confirmed) throw new Error('Chưa xác minh được lần lưu này. Kiểm tra dữ liệu Drive trước khi lưu lại.');
+  return receipt;
 }
+
+function showMandySaveResult(result) {
+  const stamp = formatShortDateTime(result.savedAt || new Date().toISOString());
+  if (result.notesSync && result.notesSync.ok) {
+    updateDriveSyncStatus(`Saved: ${stamp} · Notes: +${result.notesSync.created}, done ${result.notesSync.completed}`);
+    showToast('Đã lưu Drive và kiểm tra học phí trong Notes');
+  } else {
+    updateDriveSyncStatus(`Saved: ${stamp} · Notes chưa cập nhật`);
+    showToast('Mandy đã lưu; Notes chưa cập nhật.');
+    window.alert('Dữ liệu Mandy đã lưu trên Drive, nhưng Notes chưa cập nhật. Kiểm tra cấu hình bộ nối hoặc thử lưu lại.');
+  }
+}
+
 
 function rememberDriveSync(settings) {
   localStorage.setItem(driveSyncSettingsKey, JSON.stringify({
