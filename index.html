@@ -10,7 +10,7 @@
   <title>Mandy English Student Management</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/mandy-logo.png">
-  <link rel="stylesheet" href="styles.css?v=20261014-notes1">
+  <link rel="stylesheet" href="styles.css?v=20261102-teachers1">
 </head>
 <body>
   <header class="app-header">
@@ -68,6 +68,7 @@
       <span class="nav-section-label">Daily Work</span>
       <button class="tab-button" data-tab="dashboardTab" type="button"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 13.5 12 6l8 7.5"/><path d="M6.5 12.5V20h11v-7.5"/></svg></span><span class="nav-text">Dashboard</span></button>
       <button class="tab-button active" data-tab="scheduleTab" type="button"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v4M17 3v4M4 8h16M6 5h12a2 2 0 0 1 2 2v12H4V7a2 2 0 0 1 2-2Z"/><path d="M8 12h3M13 12h3M8 16h3M13 16h3"/></svg></span><span class="nav-text">Schedule</span></button>
+      <button class="tab-button" data-tab="teachersTab" type="button"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2.5 20v-2a5.5 5.5 0 0 1 11 0v2M12 20v-2a5.5 5.5 0 0 1 9.5-3.8V20"/></svg></span><span class="nav-text">Teachers</span></button>
       <button class="tab-button" data-tab="attendanceTab" type="button"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 11.5 11.5 14 16 9"/><path d="M6 4h12v16H6z"/></svg></span><span class="nav-text">Attendance</span></button>
       <button class="tab-button" data-tab="lessonLogTab" type="button"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19h14"/><path d="M7 15.5 15.5 7l2.5 2.5-8.5 8.5H7z"/></svg></span><span class="nav-text">Lesson Log</span></button>
       <span class="nav-section-label">Office</span>
@@ -399,6 +400,28 @@
       </div>
       <div id="mobileScheduleList" class="mobile-schedule-list" aria-label="Mobile weekly class schedule"></div>
       <div id="weeklySchedule" class="weekly-schedule" aria-label="Weekly class schedule"></div>
+    </section>
+
+    <section id="teachersTab" class="panel tab-panel" aria-labelledby="teachersTabTitle">
+      <div class="section-title teachers-title">
+        <div>
+          <p class="eyebrow">Weekly team</p>
+          <h2 id="teachersTabTitle">Teachers</h2>
+        </div>
+        <div class="teachers-week-controls" aria-label="Choose teachers week">
+          <button id="teachersPreviousWeek" class="week-nav-button" type="button" aria-label="Previous week">&lt;</button>
+          <strong id="teachersWeekRange"></strong>
+          <button id="teachersNextWeek" class="week-nav-button" type="button" aria-label="Next week">&gt;</button>
+          <button id="teachersCurrentWeek" class="ghost-button" type="button">Current week</button>
+        </div>
+      </div>
+      <div class="teachers-summary" aria-label="Weekly teaching summary">
+        <div><span>Teachers</span><strong id="teachersCount">0</strong></div>
+        <div><span>Teaching sessions</span><strong id="teachersSessionsCount">0</strong></div>
+        <div><span>Unassigned sessions</span><strong id="teachersUnassignedCount">0</strong></div>
+      </div>
+      <p id="teachersOffCount" class="teachers-off-note"></p>
+      <div id="teachersCards" class="teachers-cards" aria-live="polite"></div>
     </section>
 
     <section id="attendanceTab" class="panel tab-panel">
@@ -915,7 +938,7 @@
 
   <datalist id="classOptions"></datalist>
   <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
-  <script src="script.js?v=20261014-notes1"></script>
+  <script src="script.js?v=20261102-teachers1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

@@ -16,6 +16,156 @@
   --shadow: 0 16px 40px rgba(30, 42, 39, 0.08);
 }
 
+.teachers-title {
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.teachers-week-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.teachers-week-controls strong {
+  min-width: 136px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.teachers-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0 8px;
+}
+
+.teachers-summary > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-soft);
+}
+
+.teachers-summary span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.teachers-summary strong {
+  color: var(--green);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.teachers-off-note {
+  min-height: 22px;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.teachers-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.teacher-week-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.teacher-week-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.teacher-week-card-head h3 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 20px;
+}
+
+.teacher-week-card-head strong {
+  flex: none;
+  color: var(--green);
+  font-size: 15px;
+}
+
+.teacher-week-classes {
+  margin: 4px 0 15px;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.teacher-session-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.teacher-session-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.teacher-session-list li span {
+  color: var(--muted);
+}
+
+.teacher-session-list li strong {
+  max-width: 45%;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.teachers-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 26px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 1050px) {
+  .teachers-cards { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .teachers-week-controls {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .teachers-week-controls strong { flex: 1; min-width: 0; }
+  .teachers-week-controls .ghost-button { padding-inline: 9px; font-size: 12px; }
+  .teachers-summary { grid-template-columns: 1fr 1fr; }
+  .teachers-summary > div:last-child { grid-column: 1 / -1; }
+  .teachers-summary > div { padding: 13px; }
+  .teachers-summary span { font-size: 12px; }
+  .teachers-summary strong { font-size: 23px; }
+}
+
 body[data-theme="dark"] {
   --bg: #101815;
   --panel: #13251f;

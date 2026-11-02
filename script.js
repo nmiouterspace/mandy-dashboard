@@ -22,7 +22,7 @@ const roleLabels = {
 
 const rolePermissions = {
   admin: {
-    tabs: ["scheduleTab", "dashboardTab", "financeTab", "studentsTab", "classesTab", "attendanceTab", "lessonLogTab", "studentProgressTab", "tuitionSlipTab"],
+    tabs: ["scheduleTab", "teachersTab", "dashboardTab", "financeTab", "studentsTab", "classesTab", "attendanceTab", "lessonLogTab", "studentProgressTab", "tuitionSlipTab"],
     actions: ["all"]
   },
   teacher: {
@@ -30,7 +30,7 @@ const rolePermissions = {
     actions: ["schedule.view", "schedule.teacher", "schedule.done", "attendance.view", "attendance.edit", "lessonLog.view", "lessonLog.edit", "studentProgress.view"]
   },
   staff: {
-    tabs: ["scheduleTab", "dashboardTab", "studentsTab", "classesTab", "attendanceTab", "lessonLogTab", "studentProgressTab", "tuitionSlipTab"],
+    tabs: ["scheduleTab", "teachersTab", "dashboardTab", "studentsTab", "classesTab", "attendanceTab", "lessonLogTab", "studentProgressTab", "tuitionSlipTab"],
     actions: ["schedule.view", "schedule.teacher", "schedule.done", "students.view", "students.edit", "payments.edit", "classes.view", "classes.edit", "attendance.view", "attendance.note", "lessonLog.view", "lessonLog.edit", "studentProgress.view", "tuitionSlip.view", "tuitionSlip.edit", "drive.load", "drive.settings"]
   }
 };
@@ -110,6 +110,12 @@ const studentRows = document.querySelector("#studentRows");
 const classRows = document.querySelector("#classRows");
 const stoppedClassRows = document.querySelector("#stoppedClassRows");
 const weeklySchedule = document.querySelector("#weeklySchedule");
+const teachersWeekRange = document.querySelector("#teachersWeekRange");
+const teachersCount = document.querySelector("#teachersCount");
+const teachersSessionsCount = document.querySelector("#teachersSessionsCount");
+const teachersUnassignedCount = document.querySelector("#teachersUnassignedCount");
+const teachersOffCount = document.querySelector("#teachersOffCount");
+const teachersCards = document.querySelector("#teachersCards");
 const attendanceBoard = document.querySelector("#attendanceBoard");
 const classOptions = document.querySelector("#classOptions");
 const filterClass = document.querySelector("#filterClass");
@@ -314,6 +320,17 @@ scheduleWeekSelect.addEventListener("change", event => {
   selectedWeekStart = parseDateValue(event.target.value);
   mobileScheduleDayIndex = null;
   renderWeeklySchedule();
+  renderTeachersWeek();
+  renderAttendanceBoard();
+});
+document.querySelector("#teachersPreviousWeek").addEventListener("click", () => shiftSelectedWeek(-1));
+document.querySelector("#teachersNextWeek").addEventListener("click", () => shiftSelectedWeek(1));
+document.querySelector("#teachersCurrentWeek").addEventListener("click", () => {
+  selectedWeekStart = getWeekStart(new Date());
+  mobileScheduleDayIndex = null;
+  renderWeekOptions();
+  renderWeeklySchedule();
+  renderTeachersWeek();
   renderAttendanceBoard();
 });
 scheduleWeekNote.addEventListener("input", saveScheduleWeekNote);
@@ -324,6 +341,7 @@ currentWeek.addEventListener("click", () => {
   mobileScheduleDayIndex = null;
   renderWeekOptions();
   renderWeeklySchedule();
+  renderTeachersWeek();
   renderAttendanceBoard();
 });
 financeDate.value = formatDateValue(new Date());
@@ -650,6 +668,7 @@ function getInitialMobileTabForRole() {
 
 function applyRoleUi() {
   const isSignedIn = Boolean(currentUser);
+  if (!canOpenTab("teachersTab")) teachersCards.replaceChildren();
   authOverlay.classList.toggle("open", !isSignedIn);
   authOverlay.setAttribute("aria-hidden", isSignedIn ? "true" : "false");
 
@@ -1297,6 +1316,7 @@ function render() {
   renderClasses();
   renderWeekOptions();
   renderWeeklySchedule();
+  renderTeachersWeek();
   renderAttendanceBoard();
   renderLessonLogs();
   renderStudentProgress();
@@ -4478,6 +4498,7 @@ function renderWeeklySchedule() {
 
           updateTeacherName(teacherKey, event.target.value);
           card.classList.toggle("off-session", isOffTeacher(event.target.value));
+          renderTeachersWeek();
           renderAttendanceBoard();
           renderFinance();
           if (isOffTeacher(event.target.value) && clearCompletedSession(session)) {
@@ -4505,6 +4526,102 @@ function renderWeeklySchedule() {
 
       weeklySchedule.append(cell);
     });
+  });
+}
+
+function getTeachersWeekSummary(weekStart) {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const teachers = new Map();
+  let unassigned = 0;
+  let off = 0;
+
+  days.forEach((day, dayIndex) => {
+    const date = addDays(weekStart, dayIndex);
+    getClassesForDayForWeek(day, weekStart).forEach(classSlot => {
+      const teacherKey = getTeacherKey(day, classSlot, date);
+      const legacyTeacherKey = getLegacyTeacherKey(day, classSlot);
+      const teacherName = String(data.teachers[teacherKey] || getLegacyTeacherForWeek(legacyTeacherKey, weekStart) || "").trim();
+
+      if (isOffTeacher(teacherName)) {
+        off += 1;
+        return;
+      }
+      if (!teacherName) {
+        unassigned += 1;
+        return;
+      }
+
+      const key = teacherName.toLocaleUpperCase();
+      if (!teachers.has(key)) teachers.set(key, { name: teacherName, sessions: [] });
+      teachers.get(key).sessions.push({ date, day, ...classSlot });
+    });
+  });
+
+  return {
+    teachers: [...teachers.values()].sort((first, second) =>
+      second.sessions.length - first.sessions.length || first.name.localeCompare(second.name)),
+    unassigned,
+    off
+  };
+}
+
+function renderTeachersWeek() {
+  if (!canOpenTab("teachersTab")) {
+    teachersCards.replaceChildren();
+    return;
+  }
+
+  const weekEnd = addDays(selectedWeekStart, 6);
+  const summary = getTeachersWeekSummary(selectedWeekStart);
+  const totalSessions = summary.teachers.reduce((count, teacher) => count + teacher.sessions.length, 0);
+
+  teachersWeekRange.textContent = formatWeekRange(selectedWeekStart, weekEnd);
+  teachersCount.textContent = String(summary.teachers.length);
+  teachersSessionsCount.textContent = String(totalSessions);
+  teachersUnassignedCount.textContent = String(summary.unassigned);
+  teachersOffCount.textContent = summary.off ? `${summary.off} OFF session${summary.off === 1 ? "" : "s"} not counted.` : "";
+  teachersCards.replaceChildren();
+
+  if (!summary.teachers.length) {
+    const empty = document.createElement("p");
+    empty.className = "teachers-empty";
+    empty.textContent = summary.unassigned
+      ? "No teachers assigned yet. Check the teacher fields in Schedule."
+      : "No teaching sessions this week.";
+    teachersCards.append(empty);
+    return;
+  }
+
+  summary.teachers.forEach(teacher => {
+    const card = document.createElement("article");
+    const header = document.createElement("div");
+    const name = document.createElement("h3");
+    const count = document.createElement("strong");
+    const classes = document.createElement("p");
+    const list = document.createElement("ul");
+    const uniqueClasses = [...new Set(teacher.sessions.map(session => session.className))];
+
+    card.className = "teacher-week-card";
+    header.className = "teacher-week-card-head";
+    name.textContent = teacher.name;
+    count.textContent = `${teacher.sessions.length} session${teacher.sessions.length === 1 ? "" : "s"}`;
+    classes.className = "teacher-week-classes";
+    classes.textContent = `${uniqueClasses.length} class${uniqueClasses.length === 1 ? "" : "es"}: ${uniqueClasses.join(", ")}`;
+    list.className = "teacher-session-list";
+
+    teacher.sessions.forEach(session => {
+      const row = document.createElement("li");
+      const when = document.createElement("span");
+      const className = document.createElement("strong");
+      when.textContent = `${session.day} ${formatShortDate(session.date)} · ${session.startTime}-${session.endTime}`;
+      className.textContent = session.className;
+      row.append(when, className);
+      list.append(row);
+    });
+
+    header.append(name, count);
+    card.append(header, classes, list);
+    teachersCards.append(card);
   });
 }
 
@@ -4670,6 +4787,7 @@ function createMobileScheduleCard(day, item, date) {
 
     updateTeacherName(teacherKey, event.target.value);
     card.classList.toggle("off-session", isOffTeacher(event.target.value));
+    renderTeachersWeek();
     renderAttendanceBoard();
     renderFinance();
     if (isOffTeacher(event.target.value) && clearCompletedSession(session)) {
@@ -4755,6 +4873,7 @@ function shiftSelectedWeek(direction) {
   mobileScheduleDayIndex = null;
   renderWeekOptions();
   renderWeeklySchedule();
+  renderTeachersWeek();
   renderAttendanceBoard();
 }
 
@@ -5700,6 +5819,8 @@ function showTab(tabId) {
     panel.classList.toggle("active", panel.id === tabId);
   });
 
+  if (tabId === "teachersTab") renderTeachersWeek();
+
   updateMobileNavigationState(tabId);
   closeMobileMore();
 }
@@ -5723,6 +5844,7 @@ function getMobileTabLabel(tabId) {
     scheduleTab: "Today",
     mobileHomeTab: "Home",
     dashboardTab: "Dashboard",
+    teachersTab: "Teachers",
     financeTab: "Finance",
     studentsTab: "Students",
     classesTab: "Classes",
