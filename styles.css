@@ -35,9 +35,60 @@
   font-weight: 700;
 }
 
+.teachers-report-tools {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.teachers-period-switch {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-soft);
+}
+
+.teachers-period-switch button {
+  min-width: 68px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.teachers-period-switch button[aria-pressed="true"] {
+  background: var(--green);
+  color: #fff;
+}
+
+.teachers-filter {
+  display: grid;
+  gap: 3px;
+  min-width: 190px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.teachers-filter select {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+.teachers-report-tools > .ghost-button { min-height: 44px; }
+
 .teachers-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin: 20px 0 8px;
 }
@@ -152,6 +203,12 @@
 }
 
 @media (max-width: 760px) {
+  .teachers-report-tools {
+    display: grid;
+    grid-template-columns: 1fr auto;
+  }
+  .teachers-filter { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
+  .teachers-report-tools > .ghost-button { grid-column: 2; grid-row: 1; }
   .teachers-week-controls {
     width: 100%;
     margin-left: 0;
@@ -160,10 +217,15 @@
   .teachers-week-controls strong { flex: 1; min-width: 0; }
   .teachers-week-controls .ghost-button { padding-inline: 9px; font-size: 12px; }
   .teachers-summary { grid-template-columns: 1fr 1fr; }
-  .teachers-summary > div:last-child { grid-column: 1 / -1; }
   .teachers-summary > div { padding: 13px; }
   .teachers-summary span { font-size: 12px; }
   .teachers-summary strong { font-size: 23px; }
+}
+
+@media (max-width: 400px) {
+  .teacher-session-list li { display: grid; gap: 4px; }
+  .teacher-session-list li strong { grid-row: 1; max-width: none; text-align: left; }
+  .teacher-session-list li span { grid-row: 2; }
 }
 
 body[data-theme="dark"] {

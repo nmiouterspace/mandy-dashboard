@@ -113,9 +113,13 @@ const weeklySchedule = document.querySelector("#weeklySchedule");
 const teachersWeekRange = document.querySelector("#teachersWeekRange");
 const teachersCount = document.querySelector("#teachersCount");
 const teachersSessionsCount = document.querySelector("#teachersSessionsCount");
+const teachersDoneCount = document.querySelector("#teachersDoneCount");
 const teachersUnassignedCount = document.querySelector("#teachersUnassignedCount");
 const teachersOffCount = document.querySelector("#teachersOffCount");
 const teachersCards = document.querySelector("#teachersCards");
+const teachersFilter = document.querySelector("#teachersFilter");
+let teachersPeriodMode = "week";
+let teachersMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 const attendanceBoard = document.querySelector("#attendanceBoard");
 const classOptions = document.querySelector("#classOptions");
 const filterClass = document.querySelector("#filterClass");
@@ -323,16 +327,33 @@ scheduleWeekSelect.addEventListener("change", event => {
   renderTeachersWeek();
   renderAttendanceBoard();
 });
-document.querySelector("#teachersPreviousWeek").addEventListener("click", () => shiftSelectedWeek(-1));
-document.querySelector("#teachersNextWeek").addEventListener("click", () => shiftSelectedWeek(1));
+document.querySelector("#teachersPreviousWeek").addEventListener("click", () => shiftTeachersPeriod(-1));
+document.querySelector("#teachersNextWeek").addEventListener("click", () => shiftTeachersPeriod(1));
 document.querySelector("#teachersCurrentWeek").addEventListener("click", () => {
-  selectedWeekStart = getWeekStart(new Date());
-  mobileScheduleDayIndex = null;
-  renderWeekOptions();
-  renderWeeklySchedule();
+  if (teachersPeriodMode === "month") {
+    teachersMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  } else {
+    selectedWeekStart = getWeekStart(new Date());
+    mobileScheduleDayIndex = null;
+    renderWeekOptions();
+    renderWeeklySchedule();
+    renderAttendanceBoard();
+  }
   renderTeachersWeek();
-  renderAttendanceBoard();
 });
+document.querySelector("#teachersWeekMode").addEventListener("click", () => {
+  teachersPeriodMode = "week";
+  renderTeachersWeek();
+});
+document.querySelector("#teachersMonthMode").addEventListener("click", () => {
+  if (teachersPeriodMode !== "month") {
+    teachersMonthStart = new Date(selectedWeekStart.getFullYear(), selectedWeekStart.getMonth(), 1);
+  }
+  teachersPeriodMode = "month";
+  renderTeachersWeek();
+});
+teachersFilter.addEventListener("change", renderTeachersWeek);
+document.querySelector("#teachersExportCsv").addEventListener("click", exportTeachersCsv);
 scheduleWeekNote.addEventListener("input", saveScheduleWeekNote);
 previousWeek.addEventListener("click", () => shiftSelectedWeek(-1));
 nextWeek.addEventListener("click", () => shiftSelectedWeek(1));
@@ -3748,7 +3769,7 @@ function downloadCsv(rows, fileName) {
   document.body.append(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function slugifyFileName(value) {
@@ -4529,14 +4550,40 @@ function renderWeeklySchedule() {
   });
 }
 
-function getTeachersWeekSummary(weekStart) {
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+function getTeachersPeriodRange() {
+  if (teachersPeriodMode === "month") {
+    return {
+      start: formatDateValue(teachersMonthStart),
+      end: formatDateValue(new Date(teachersMonthStart.getFullYear(), teachersMonthStart.getMonth() + 1, 0)),
+      label: teachersMonthStart.toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+    };
+  }
+  const weekEnd = addDays(selectedWeekStart, 6);
+  return {
+    start: formatDateValue(selectedWeekStart),
+    end: formatDateValue(weekEnd),
+    label: formatWeekRange(selectedWeekStart, weekEnd)
+  };
+}
+
+function shiftTeachersPeriod(direction) {
+  if (teachersPeriodMode === "week") {
+    shiftSelectedWeek(direction);
+    return;
+  }
+  teachersMonthStart = new Date(teachersMonthStart.getFullYear(), teachersMonthStart.getMonth() + direction, 1);
+  renderTeachersWeek();
+}
+
+function getTeachersPeriodSummary(start, end) {
   const teachers = new Map();
   let unassigned = 0;
   let off = 0;
 
-  days.forEach((day, dayIndex) => {
-    const date = addDays(weekStart, dayIndex);
+  getDateValuesInRange(start, end).forEach(dateValue => {
+    const date = parseDateValue(dateValue);
+    const day = getDayCodeFromDate(date);
+    const weekStart = getWeekStart(date);
     getClassesForDayForWeek(day, weekStart).forEach(classSlot => {
       const teacherKey = getTeacherKey(day, classSlot, date);
       const legacyTeacherKey = getLegacyTeacherKey(day, classSlot);
@@ -4553,7 +4600,8 @@ function getTeachersWeekSummary(weekStart) {
 
       const key = teacherName.toLocaleUpperCase();
       if (!teachers.has(key)) teachers.set(key, { name: teacherName, sessions: [] });
-      teachers.get(key).sessions.push({ date, day, ...classSlot });
+      teachers.get(key).sessions.push({ date, day, ...classSlot,
+        done: Boolean(data.completedSessions[getSessionKey({ date, ...classSlot })]) });
     });
   });
 
@@ -4571,28 +4619,40 @@ function renderTeachersWeek() {
     return;
   }
 
-  const weekEnd = addDays(selectedWeekStart, 6);
-  const summary = getTeachersWeekSummary(selectedWeekStart);
-  const totalSessions = summary.teachers.reduce((count, teacher) => count + teacher.sessions.length, 0);
+  const range = getTeachersPeriodRange();
+  const summary = getTeachersPeriodSummary(range.start, range.end);
+  const selectedTeacher = teachersFilter.value;
+  teachersFilter.replaceChildren(new Option("All teachers", ""), ...summary.teachers.map(teacher => new Option(teacher.name, teacher.name.toLocaleUpperCase())));
+  if (selectedTeacher && ![...teachersFilter.options].some(option => option.value === selectedTeacher)) {
+    teachersFilter.add(new Option(selectedTeacher, selectedTeacher));
+  }
+  teachersFilter.value = selectedTeacher;
+  const visibleTeachers = selectedTeacher
+    ? summary.teachers.filter(teacher => teacher.name.toLocaleUpperCase() === selectedTeacher)
+    : summary.teachers;
+  const visibleSessions = visibleTeachers.flatMap(teacher => teacher.sessions);
 
-  teachersWeekRange.textContent = formatWeekRange(selectedWeekStart, weekEnd);
-  teachersCount.textContent = String(summary.teachers.length);
-  teachersSessionsCount.textContent = String(totalSessions);
-  teachersUnassignedCount.textContent = String(summary.unassigned);
-  teachersOffCount.textContent = summary.off ? `${summary.off} OFF session${summary.off === 1 ? "" : "s"} not counted.` : "";
+  teachersWeekRange.textContent = range.label;
+  document.querySelector("#teachersWeekMode").setAttribute("aria-pressed", String(teachersPeriodMode === "week"));
+  document.querySelector("#teachersMonthMode").setAttribute("aria-pressed", String(teachersPeriodMode === "month"));
+  teachersCount.textContent = String(visibleTeachers.length);
+  teachersSessionsCount.textContent = String(visibleSessions.length);
+  teachersDoneCount.textContent = String(visibleSessions.filter(session => session.done).length);
+  teachersUnassignedCount.textContent = String(selectedTeacher ? 0 : summary.unassigned);
+  teachersOffCount.textContent = !selectedTeacher && summary.off ? `${summary.off} OFF session${summary.off === 1 ? "" : "s"} not counted.` : "";
   teachersCards.replaceChildren();
 
-  if (!summary.teachers.length) {
+  if (!visibleTeachers.length) {
     const empty = document.createElement("p");
     empty.className = "teachers-empty";
-    empty.textContent = summary.unassigned
+    empty.textContent = selectedTeacher ? "No sessions for this teacher in this period." : summary.unassigned
       ? "No teachers assigned yet. Check the teacher fields in Schedule."
-      : "No teaching sessions this week.";
+      : "No teaching sessions in this period.";
     teachersCards.append(empty);
     return;
   }
 
-  summary.teachers.forEach(teacher => {
+  visibleTeachers.forEach(teacher => {
     const card = document.createElement("article");
     const header = document.createElement("div");
     const name = document.createElement("h3");
@@ -4604,7 +4664,7 @@ function renderTeachersWeek() {
     card.className = "teacher-week-card";
     header.className = "teacher-week-card-head";
     name.textContent = teacher.name;
-    count.textContent = `${teacher.sessions.length} session${teacher.sessions.length === 1 ? "" : "s"}`;
+    count.textContent = `${teacher.sessions.length} scheduled · ${teacher.sessions.filter(session => session.done).length} done`;
     classes.className = "teacher-week-classes";
     classes.textContent = `${uniqueClasses.length} class${uniqueClasses.length === 1 ? "" : "es"}: ${uniqueClasses.join(", ")}`;
     list.className = "teacher-session-list";
@@ -4613,7 +4673,7 @@ function renderTeachersWeek() {
       const row = document.createElement("li");
       const when = document.createElement("span");
       const className = document.createElement("strong");
-      when.textContent = `${session.day} ${formatShortDate(session.date)} · ${session.startTime}-${session.endTime}`;
+      when.textContent = `${session.day} ${formatShortDate(session.date)} · ${session.startTime}-${session.endTime}${session.done ? " · Done" : ""}`;
       className.textContent = session.className;
       row.append(when, className);
       list.append(row);
@@ -4623,6 +4683,21 @@ function renderTeachersWeek() {
     card.append(header, classes, list);
     teachersCards.append(card);
   });
+}
+
+function exportTeachersCsv() {
+  const range = getTeachersPeriodRange();
+  const selectedTeacher = teachersFilter.value;
+  const summary = getTeachersPeriodSummary(range.start, range.end);
+  const rows = [["Date", "Day", "Class", "Start Time", "End Time", "Teacher", "Status"]];
+  summary.teachers
+    .filter(teacher => !selectedTeacher || teacher.name.toLocaleUpperCase() === selectedTeacher)
+    .forEach(teacher => teacher.sessions.forEach(session => rows.push([
+      formatDateValue(session.date), session.day, session.className, session.startTime,
+      session.endTime, teacher.name, session.done ? "Done" : "Scheduled"
+    ])));
+  const fileName = `mandy-english-teachers-${range.start}_to_${range.end}${selectedTeacher ? `-${slugifyFileName(selectedTeacher)}` : ""}.csv`;
+  downloadCsv(rows, fileName);
 }
 
 function isMobileScheduleSwipeInteractiveTarget(target) {

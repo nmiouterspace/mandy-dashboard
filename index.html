@@ -10,7 +10,7 @@
   <title>Mandy English Student Management</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/mandy-logo.png">
-  <link rel="stylesheet" href="styles.css?v=20261102-teachers1">
+  <link rel="stylesheet" href="styles.css?v=20261103-teachers-report1">
 </head>
 <body>
   <header class="app-header">
@@ -405,19 +405,28 @@
     <section id="teachersTab" class="panel tab-panel" aria-labelledby="teachersTabTitle">
       <div class="section-title teachers-title">
         <div>
-          <p class="eyebrow">Weekly team</p>
+          <p class="eyebrow">Teaching schedule</p>
           <h2 id="teachersTabTitle">Teachers</h2>
         </div>
-        <div class="teachers-week-controls" aria-label="Choose teachers week">
-          <button id="teachersPreviousWeek" class="week-nav-button" type="button" aria-label="Previous week">&lt;</button>
+        <div class="teachers-week-controls" aria-label="Choose teachers period">
+          <button id="teachersPreviousWeek" class="week-nav-button" type="button" aria-label="Previous period">&lt;</button>
           <strong id="teachersWeekRange"></strong>
-          <button id="teachersNextWeek" class="week-nav-button" type="button" aria-label="Next week">&gt;</button>
-          <button id="teachersCurrentWeek" class="ghost-button" type="button">Current week</button>
+          <button id="teachersNextWeek" class="week-nav-button" type="button" aria-label="Next period">&gt;</button>
+          <button id="teachersCurrentWeek" class="ghost-button" type="button">Current period</button>
         </div>
       </div>
-      <div class="teachers-summary" aria-label="Weekly teaching summary">
+      <div class="teachers-report-tools">
+        <div class="teachers-period-switch" role="group" aria-label="Report period">
+          <button id="teachersWeekMode" type="button" aria-pressed="true">Week</button>
+          <button id="teachersMonthMode" type="button" aria-pressed="false">Month</button>
+        </div>
+        <label class="teachers-filter">Teacher <select id="teachersFilter"><option value="">All teachers</option></select></label>
+        <button id="teachersExportCsv" class="ghost-button" type="button" aria-label="Export teacher report CSV" title="Export teacher report CSV">CSV</button>
+      </div>
+      <div class="teachers-summary" aria-label="Teaching summary">
         <div><span>Teachers</span><strong id="teachersCount">0</strong></div>
-        <div><span>Teaching sessions</span><strong id="teachersSessionsCount">0</strong></div>
+        <div><span>Scheduled sessions</span><strong id="teachersSessionsCount">0</strong></div>
+        <div><span>Done sessions</span><strong id="teachersDoneCount">0</strong></div>
         <div><span>Unassigned sessions</span><strong id="teachersUnassignedCount">0</strong></div>
       </div>
       <p id="teachersOffCount" class="teachers-off-note"></p>
@@ -938,7 +947,7 @@
 
   <datalist id="classOptions"></datalist>
   <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
-  <script src="script.js?v=20261102-teachers1"></script>
+  <script src="script.js?v=20261103-teachers-report1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
